@@ -1519,6 +1519,32 @@
         });
 
         // --- WORLD LEADERBOARD ---
+        // Scores live on the Netlify backend. When the page is served from Netlify the
+        // relative path works; anywhere else (GitHub Pages, a local file...) fall back to
+        // the Netlify site directly.
+        const LEADERBOARD_ENDPOINTS = ['/api/leaderboard', 'https://resplendent-blancmange-2a8773.netlify.app/api/leaderboard'];
+        let leaderboardEndpoint = null;
+
+        async function leaderboardFetch(options) {
+            const candidates = leaderboardEndpoint ? [leaderboardEndpoint] : LEADERBOARD_ENDPOINTS;
+            let lastErr;
+            for (const url of candidates) {
+                if (url.startsWith('/') && location.protocol === 'file:') continue;
+                try {
+                    const res = await fetch(url, options);
+                    // A static host answers with HTML (404/405) instead of our JSON API
+                    if (!(res.headers.get('content-type') || '').includes('application/json')) {
+                        throw new Error('Leaderboard API not found at ' + url);
+                    }
+                    leaderboardEndpoint = url;
+                    return res;
+                } catch (err) {
+                    lastErr = err;
+                }
+            }
+            throw lastErr || new Error('Leaderboard unreachable');
+        }
+
         let lastSubmittedId = null;
         let submittedScore = 0;
 
@@ -1553,7 +1579,7 @@
             const list = document.getElementById('leaderboardList');
             list.innerHTML = `<div class="text-center text-cyan-400 font-orbitron text-sm py-10 animate-pulse">SCANNING GALAXY...</div>`;
             try {
-                const res = await fetch('/api/leaderboard');
+                const res = await leaderboardFetch();
                 if (!res.ok) throw new Error();
                 renderLeaderboard(await res.json());
             } catch (err) {
@@ -1594,7 +1620,7 @@
             input.disabled = true;
             btn.innerText = 'SENDING...';
             try {
-                const res = await fetch('/api/leaderboard', {
+                const res = await leaderboardFetch({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name, score: finalScore, level })
