@@ -224,7 +224,7 @@
 
     <!-- TUTORIAL MODAL -->
     <div id="tutorialModal" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 hidden">
-        <div class="glass-panel w-full max-w-md rounded-2xl p-6 text-slate-200 font-sans">
+        <div class="glass-panel w-full max-w-md rounded-2xl p-6 text-slate-200 font-sans max-h-[90vh] overflow-y-auto">
             <h2 class="font-orbitron text-2xl font-bold text-cyan-400 mb-4 text-center">FLIGHT MANUAL</h2>
             <div class="space-y-4 text-sm leading-relaxed mb-6">
                 <div class="flex items-start space-x-3">
@@ -253,6 +253,13 @@
                     <div>
                         <strong class="text-white block font-orbitron">LEVELS & POWER-UPS</strong>
                         Climb higher to level up: everything gets faster and more crowded, but each level multiplies your points. The background glow shifts colour with every new level. Grab a golden <b class="text-yellow-300">2X</b> orb for double points, and a pink <b class="text-pink-400">♥</b> for an extra life.
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="bg-yellow-500/20 p-2 rounded-lg text-yellow-300 text-lg font-bold font-orbitron">05</div>
+                    <div>
+                        <strong class="text-white block font-orbitron">GATE PLANETS</strong>
+                        A gravity wall blocks the end of every level. Fly or swing into the ringed planet beneath it to dive inside a 30-second arcade challenge. Slide your thumb anywhere (phone) or move the mouse (PC) to steer — firing is automatic, tap/click to launch. Survive or win to break the wall and reach the next level; fail and you lose a life.
                     </div>
                 </div>
             </div>
@@ -495,6 +502,33 @@
                 nodeGap: 280 + Math.min(t, 6) * 8,
                 multiplier: lv                    // points per height climbed
             };
+        }
+
+        // Inside games opened by gate planets, rotating level by level
+        const MINIGAME_FRAMES = 30 * 60; // 30s
+        const MG_INTRO_FRAMES = 180;
+        const MG_OUTRO_FRAMES = 120;
+        const MG_SHIELDS = 3;
+        const MINIGAMES = [
+            { id: 'strike', name: 'SKY STRIKE', hint: 'MOVE TO STEER • AUTO-FIRE • SURVIVE 30s' },
+            { id: 'breaker', name: 'CORE BREAKER', hint: 'MOVE THE PADDLE • TAP TO LAUNCH • CLEAR OR SURVIVE' },
+            { id: 'invaders', name: 'VOID INVADERS', hint: 'MOVE TO DODGE • AUTO-FIRE • HOLD THE LINE 30s' }
+        ];
+
+        function minigameForLevel(lv) {
+            return MINIGAMES[(lv - 1) % MINIGAMES.length];
+        }
+
+        function tintRgba(t, a) {
+            return `rgba(${t[0]},${t[1]},${t[2]},${a})`;
+        }
+
+        // Draw canvas text in Orbitron, shrinking it to fit maxW on narrow phones
+        function fillFitText(text, x, y, maxW, size, weight) {
+            ctx.font = `${weight} ${size}px Orbitron, sans-serif`;
+            const w = ctx.measureText(text).width;
+            if (w > maxW) ctx.font = `${weight} ${Math.floor(size * maxW / w)}px Orbitron, sans-serif`;
+            ctx.fillText(text, x, y);
         }
 
         function levelAtY(y) {
@@ -929,6 +963,127 @@
             }
         }
 
+        // Gate planet: sits just below each level boundary behind a gravity wall.
+        // Hitting it opens the inside game; clearing that breaks the wall.
+        class GatePlanet {
+            constructor(x, y, lv) {
+                this.x = x;
+                this.y = y;
+                this.level = lv;
+                this.radius = 42;
+                this.barrierY = y - 160;
+                this.cleared = false;
+                this.cooldown = 0;
+                this.angle = 0;
+                this.tint = LEVEL_TINTS[lv % LEVEL_TINTS.length]; // colour of the level it unlocks
+                this.game = minigameForLevel(lv);
+            }
+
+            render(ctx, camY) {
+                this.angle += 0.02;
+                const y = this.y - camY;
+                const c = this.tint;
+                ctx.save();
+
+                if (!this.cleared) {
+                    // Gravity wall across the screen
+                    const by = this.barrierY - camY;
+                    const wall = ctx.createLinearGradient(0, by - 50, 0, by);
+                    wall.addColorStop(0, tintRgba(c, 0));
+                    wall.addColorStop(1, tintRgba(c, 0.2));
+                    ctx.fillStyle = wall;
+                    ctx.fillRect(0, by - 50, width, 50);
+
+                    ctx.strokeStyle = tintRgba(c, 0.6 + Math.sin(this.angle * 4) * 0.25);
+                    ctx.shadowColor = tintRgba(c, 1);
+                    ctx.shadowBlur = 15;
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([14, 10]);
+                    ctx.lineDashOffset = -this.angle * 40;
+                    ctx.beginPath();
+                    ctx.moveTo(0, by);
+                    ctx.lineTo(width, by);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.fillStyle = tintRgba(c, 0.95);
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    fillFitText('GRAVITY WALL • HIT THE PLANET', width / 2, by + 18, width - 24, 11, 700);
+
+                    // Sonar ping drawing attention to the planet
+                    if (this.cooldown <= 0) {
+                        const p = (this.angle * 0.8) % 1;
+                        ctx.strokeStyle = tintRgba(c, (1 - p) * 0.6);
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(this.x, y, this.radius + 8 + p * 60, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                }
+
+                ctx.globalAlpha = this.cleared ? 0.35 : (this.cooldown > 0 ? 0.45 : 1);
+                const r = this.radius + Math.sin(this.angle * 2) * 2;
+                const tilt = -0.35;
+
+                // Back half of the ring
+                ctx.strokeStyle = tintRgba(c, 0.8);
+                ctx.shadowColor = tintRgba(c, 1);
+                ctx.shadowBlur = 15;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.ellipse(this.x, y, r * 1.75, r * 0.42, tilt, Math.PI, Math.PI * 2);
+                ctx.stroke();
+
+                // Planet body
+                const g = ctx.createRadialGradient(this.x - r * 0.35, y - r * 0.35, 2, this.x, y, r);
+                g.addColorStop(0, tintRgba(c, 0.85));
+                g.addColorStop(0.45, tintRgba(c, 0.25));
+                g.addColorStop(1, 'rgba(8, 6, 20, 0.95)');
+                ctx.fillStyle = g;
+                ctx.shadowBlur = 30;
+                ctx.beginPath();
+                ctx.arc(this.x, y, r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = tintRgba(c, 1);
+                ctx.stroke();
+
+                // Drifting surface bands
+                ctx.save();
+                ctx.clip();
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = tintRgba(c, 0.3);
+                ctx.lineWidth = 2;
+                for (let i = -1; i <= 1; i++) {
+                    const bandY = y + i * r * 0.42 + Math.sin(this.angle + i) * 3;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x - r, bandY);
+                    ctx.quadraticCurveTo(this.x, bandY + r * 0.2, this.x + r, bandY);
+                    ctx.stroke();
+                }
+                ctx.restore();
+
+                // Front half of the ring
+                ctx.strokeStyle = tintRgba(c, 0.9);
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.ellipse(this.x, y, r * 1.75, r * 0.42, tilt, 0, Math.PI);
+                ctx.stroke();
+
+                if (!this.cleared) {
+                    ctx.globalAlpha = 1;
+                    ctx.shadowBlur = 10;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = '900 12px Orbitron, sans-serif';
+                    ctx.fillText(this.game.name, this.x, y + r + 26);
+                }
+                ctx.restore();
+            }
+        }
+
         // VFX Particle Explosion/Spark system
         class Particle {
             constructor(x, y, color) {
@@ -972,8 +1127,25 @@
         let pulses = [];
         let powerUps = [];
         let particles = [];
+        let gates = [];
+        let gateBonus = 0;
 
         let highestGeneratedY = 0;
+
+        function activeGate() {
+            return gates.find(g => !g.cleared) || null;
+        }
+
+        function nearGate(x, y, dist) {
+            return gates.some(g => !g.cleared && Math.hypot(x - g.x, y - g.y) < dist);
+        }
+
+        // Place the gate planet guarding the top of level lv
+        function createGate(lv) {
+            const boundary = runOriginY - lv * LEVEL_HEIGHT;
+            const x = width / 2 + (Math.random() - 0.5) * Math.min(width * 0.4, 300);
+            gates.push(new GatePlanet(x, boundary + 220, lv));
+        }
 
         function generateChunk(toY) {
             while (highestGeneratedY > toY) {
@@ -982,6 +1154,7 @@
 
                 // Spawn Orbital Node
                 let nx = Math.random() * (width - 160) + 80;
+                if (nearGate(nx, highestGeneratedY, 130)) continue;
                 nodes.push(new OrbitalNode(nx, highestGeneratedY));
 
                 // Chance to spawn pulse gems around node
@@ -994,7 +1167,7 @@
                 for (let i = 0; i < asteroidCount; i++) {
                     let ax = Math.random() * (width - 100) + 50;
                     // Keep asteroid away from exact node center
-                    if (Math.abs(ax - nx) > 80) {
+                    if (Math.abs(ax - nx) > 80 && !nearGate(ax, highestGeneratedY, 200)) {
                         asteroids.push(new Asteroid(ax, highestGeneratedY + (Math.random() - 0.5) * 140, cfg.asteroidSpeed));
                     }
                 }
@@ -1029,31 +1202,47 @@
             isHolding = false;
         }
 
-        window.addEventListener('mousedown', onInputDown);
+        window.addEventListener('mousedown', (e) => {
+            if (gameState === 'MINIGAME') minigamePointerDown(e.clientX, e.clientY, false);
+            onInputDown(e);
+        });
         window.addEventListener('mouseup', onInputUp);
+        window.addEventListener('mousemove', (e) => {
+            if (gameState === 'MINIGAME') minigamePointerMove(e.clientX, e.clientY, false);
+        });
         // Touch input is suppressed only during gameplay (when no overlay is visible), so taps
         // on menu/shop buttons still fire their click events on phones. Listening on window
         // means a touch anywhere on screen anchors the orb, even over the HUD.
         window.addEventListener('touchstart', (e) => {
-            if (gameState === 'PLAYING') e.preventDefault();
+            if (gameState === 'PLAYING' || gameState === 'MINIGAME') e.preventDefault();
+            if (gameState === 'MINIGAME' && e.touches.length) minigamePointerDown(e.touches[0].clientX, e.touches[0].clientY, true);
             onInputDown(e);
         }, { passive: false });
+        window.addEventListener('touchmove', (e) => {
+            if (gameState !== 'MINIGAME') return;
+            e.preventDefault();
+            if (e.touches.length) minigamePointerMove(e.touches[0].clientX, e.touches[0].clientY, true);
+        }, { passive: false });
         const onTouchRelease = (e) => {
-            if (gameState === 'PLAYING') e.preventDefault();
+            if (gameState === 'PLAYING' || gameState === 'MINIGAME') e.preventDefault();
             if (e.touches.length === 0) onInputUp(e);
         };
         window.addEventListener('touchend', onTouchRelease, { passive: false });
         window.addEventListener('touchcancel', onTouchRelease, { passive: false });
         window.addEventListener('blur', () => { isHolding = false; });
 
+        const mgKeys = {};
         window.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT') return;
+            mgKeys[e.code] = true;
             if (e.code === 'Space') {
                 if (gameState === 'PLAYING') isHolding = true;
+                else if (gameState === 'MINIGAME' && mg) mg.tapped = true;
                 else if (gameState === 'MENU') startGame();
             }
         });
         window.addEventListener('keyup', (e) => {
+            mgKeys[e.code] = false;
             if (e.code === 'Space') isHolding = false;
         });
 
@@ -1085,6 +1274,10 @@
             pulses = [];
             powerUps = [];
             particles = [];
+            gates = [];
+            gateBonus = 0;
+            mg = null;
+            createGate(1);
 
             generateChunk(-2000);
 
@@ -1189,6 +1382,769 @@
             document.getElementById('reviveAdBtn').classList.add('hidden');
         }
 
+        // --- INSIDE GAMES (opened by gate planets) ---
+        // One-handed controls: on phones the ship follows the thumb's drag from wherever it
+        // touches down (so the finger never covers the ship); on PC it follows the mouse.
+        // Firing is automatic; a tap/click launches the ball in CORE BREAKER.
+        let mg = null;
+        const mgPointer = { startX: 0, startY: 0, fromX: 0, fromY: 0 };
+
+        function startMinigame(gate) {
+            gameState = 'MINIGAME';
+            isHolding = false;
+            const fw = gate.game.id === 'strike' ? width : Math.min(width, 520);
+            mg = {
+                gate, game: gate.game, type: gate.game.id, tint: gate.tint,
+                phase: 'intro', t: 0, time: MINIGAME_FRAMES,
+                fx: (width - fw) / 2, fw,
+                ship: { x: width / 2, y: height - 110 },
+                target: { x: width / 2, y: height - 110 },
+                shields: MG_SHIELDS, invuln: 0, fireCd: 0, spawnCd: 30, enemyFireCd: 90, tapped: false,
+                bullets: [], enemyBullets: [], enemies: [], drops: [], particles: [],
+                camY: 0, wave: 1, kills: 0
+            };
+            if (mg.type === 'breaker') initBreaker();
+            else if (mg.type === 'invaders') initInvaders();
+
+            sfx.playGrapple();
+            sfx.playPowerUp();
+            screenShake = 10;
+            document.getElementById('hud').classList.add('opacity-0');
+            document.getElementById('hudLives').classList.add('opacity-0');
+        }
+
+        function endMinigame(won) {
+            mg.phase = won ? 'won' : 'lost';
+            mg.t = 0;
+            mg.enemyBullets = [];
+            if (won) {
+                sfx.playLevelUp();
+                mgBurst(mg.ship.x, mg.ship.y, tintRgba(mg.tint, 1), 50);
+            } else {
+                sfx.playExplosion();
+                screenShake = 20;
+                mgBurst(mg.ship.x, mg.ship.y, getActiveSkin().color, 40);
+            }
+        }
+
+        function exitMinigame(won) {
+            const gate = mg.gate;
+            mg = null;
+            gameState = 'PLAYING';
+            isHolding = false;
+            document.getElementById('hud').classList.remove('opacity-0');
+            document.getElementById('hudLives').classList.remove('opacity-0');
+
+            if (won) {
+                // Wall comes down; fling the orb out of the planet towards the next level
+                gate.cleared = true;
+                gateBonus = 500 * level;
+                score += gateBonus;
+                player.anchoredNode = null;
+                player.x = gate.x;
+                player.y = gate.y - gate.radius - 40;
+                player.vx = 0;
+                player.vy = -getLevelConfig(level).minSpeed * 1.8;
+                player.trail = [];
+                asteroids = asteroids.filter(a => Math.hypot(a.x - player.x, a.y - player.y) > 320);
+                invulnTimer = 120;
+                screenShake = 12;
+                spawnExplosion(gate.x, gate.y, tintRgba(gate.tint, 1), 50);
+            } else {
+                gate.cooldown = 180;
+                triggerGameOver();
+            }
+            updateHud();
+        }
+
+        function clampMgTarget() {
+            mg.target.x = Math.max(mg.fx + 20, Math.min(mg.fx + mg.fw - 20, mg.target.x));
+            mg.target.y = Math.max(height * 0.3, Math.min(height - 40, mg.target.y));
+        }
+
+        function minigamePointerDown(x, y, isTouch) {
+            if (!mg) return;
+            sfx.init();
+            mg.tapped = true;
+            if (isTouch) {
+                mgPointer.startX = x;
+                mgPointer.startY = y;
+                mgPointer.fromX = mg.target.x;
+                mgPointer.fromY = mg.target.y;
+            } else {
+                minigamePointerMove(x, y, false);
+            }
+        }
+
+        function minigamePointerMove(x, y, isTouch) {
+            if (!mg) return;
+            if (isTouch) {
+                mg.target.x = mgPointer.fromX + (x - mgPointer.startX) * 1.5;
+                mg.target.y = mgPointer.fromY + (y - mgPointer.startY) * 1.5;
+            } else {
+                mg.target.x = x;
+                mg.target.y = y;
+            }
+            clampMgTarget();
+        }
+
+        function mgBurst(x, y, color, count) {
+            for (let i = 0; i < count; i++) mg.particles.push(new Particle(x, y, color));
+        }
+
+        function mgKill(x, y, color, points) {
+            mg.kills++;
+            score += points * level;
+            sfx.playCloseCall();
+            mgBurst(x, y, color, 16);
+            if (Math.random() < 0.3) mg.drops.push(new LightPulse(x, y));
+        }
+
+        function mgHitShip() {
+            if (mg.invuln > 0 || mg.phase !== 'play') return;
+            mg.shields--;
+            mg.invuln = 90;
+            screenShake = 14;
+            sfx.playLifeLost();
+            mgBurst(mg.ship.x, mg.ship.y, '#ff2d7a', 25);
+            if (mg.shields <= 0) endMinigame(false);
+        }
+
+        function mgProgress() {
+            return 1 - mg.time / MINIGAME_FRAMES;
+        }
+
+        // SKY STRIKE (1942-style vertical shooter)
+        function updateStrike() {
+            const prog = mgProgress();
+            const s = mg.ship;
+
+            if (--mg.fireCd <= 0) {
+                mg.fireCd = 8;
+                mg.bullets.push({ x: s.x - 9, y: s.y - 10, vx: 0, vy: -12 }, { x: s.x + 9, y: s.y - 10, vx: 0, vy: -12 });
+            }
+
+            if (--mg.spawnCd <= 0) {
+                mg.spawnCd = Math.max(14, 46 - prog * 26 - Math.min(level, 8) * 1.5);
+                const x = mg.fx + 30 + Math.random() * (mg.fw - 60);
+                if (Math.random() < 0.5) {
+                    const a = new Asteroid(x, -40, 1);
+                    a.kind = 'rock';
+                    a.vx *= 0.5;
+                    a.vy = 2 + Math.random() * 1.5 + prog * 2;
+                    a.hp = a.radius > 28 ? 3 : 2;
+                    mg.enemies.push(a);
+                } else {
+                    mg.enemies.push({ kind: 'drone', x, baseX: x, y: -30, vy: 1.6 + prog * 1.4, radius: 15, hp: 1, phase: Math.random() * 6, fireCd: 40 + Math.random() * 60 });
+                }
+            }
+
+            for (const e of mg.enemies) {
+                if (e.kind === 'rock') {
+                    e.update();
+                    e.y += e.vy;
+                } else {
+                    e.phase += 0.05;
+                    e.y += e.vy;
+                    e.x = e.baseX + Math.sin(e.phase) * 50;
+                    if (--e.fireCd <= 0 && e.y > 0 && e.y < s.y - 80) {
+                        e.fireCd = Math.max(50, 110 - prog * 50);
+                        const ang = Math.atan2(s.y - e.y, s.x - e.x);
+                        const sp = 3.6 + prog * 1.6;
+                        mg.enemyBullets.push({ x: e.x, y: e.y + 10, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp });
+                    }
+                }
+                if (Math.hypot(e.x - s.x, e.y - s.y) < e.radius * 0.85 + 12 && mg.invuln <= 0) {
+                    e.hp = 0;
+                    mgBurst(e.x, e.y, '#ff0055', 16);
+                    mgHitShip();
+                }
+            }
+
+            for (const b of mg.bullets) {
+                for (const e of mg.enemies) {
+                    if (e.hp > 0 && Math.hypot(b.x - e.x, b.y - e.y) < e.radius + 4) {
+                        e.hp--;
+                        b.dead = true;
+                        if (e.hp <= 0) mgKill(e.x, e.y, '#ff0055', e.kind === 'rock' ? 15 : 25);
+                        else mgBurst(b.x, b.y, '#ffffff', 3);
+                        break;
+                    }
+                }
+            }
+            mg.enemies = mg.enemies.filter(e => e.hp > 0 && e.y < height + 60);
+        }
+
+        // CORE BREAKER (Arkanoid-style)
+        function initBreaker() {
+            const cols = mg.fw < 420 ? 6 : 8;
+            const rows = Math.min(5 + Math.floor((level - 1) / 3), 7);
+            const gap = 6, pad = 12, bh = 18;
+            const bw = (mg.fw - pad * 2 - gap * (cols - 1)) / cols;
+            mg.bricks = [];
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    mg.bricks.push({
+                        x: mg.fx + pad + c * (bw + gap), y: 100 + r * (bh + gap), w: bw, h: bh,
+                        hp: r < Math.min(level - 1, 3) ? 2 : 1,
+                        tint: LEVEL_TINTS[(r + level) % LEVEL_TINTS.length], alive: true
+                    });
+                }
+            }
+            mg.paddle = { w: Math.min(mg.fw * 0.26, 120), h: 14, y: height - 80 };
+            mg.ship.y = mg.target.y = mg.paddle.y;
+            mg.ball = { x: mg.ship.x, y: 0, vx: 0, vy: 0, r: 9, stuck: true, stuckT: 0, trail: [] };
+            stickBall();
+        }
+
+        function stickBall() {
+            const b = mg.ball;
+            b.x = mg.ship.x;
+            b.y = mg.paddle.y - mg.paddle.h / 2 - b.r - 1;
+        }
+
+        function updateBreaker() {
+            const prog = mgProgress();
+            const b = mg.ball, p = mg.paddle;
+            const speed = 5.5 + prog * 3 + Math.min(level, 8) * 0.2;
+
+            if (b.stuck) {
+                stickBall();
+                if (mg.tapped || ++b.stuckT > 90) {
+                    b.stuck = false;
+                    const ang = (Math.random() - 0.5) * 0.8;
+                    b.vx = Math.sin(ang) * speed;
+                    b.vy = -Math.cos(ang) * speed;
+                    sfx.playRelease();
+                }
+                return;
+            }
+
+            const cur = Math.hypot(b.vx, b.vy) || 1;
+            b.vx *= speed / cur;
+            b.vy *= speed / cur;
+
+            const steps = 3;
+            for (let i = 0; i < steps; i++) {
+                b.x += b.vx / steps;
+                b.y += b.vy / steps;
+
+                const left = mg.fx + b.r, right = mg.fx + mg.fw - b.r;
+                if (b.x < left) { b.x = left; b.vx = Math.abs(b.vx); }
+                if (b.x > right) { b.x = right; b.vx = -Math.abs(b.vx); }
+                if (b.y < 80 + b.r) { b.y = 80 + b.r; b.vy = Math.abs(b.vy); }
+
+                // Paddle: hit offset steers the bounce angle
+                const top = p.y - p.h / 2;
+                if (b.vy > 0 && b.y + b.r >= top && b.y - b.r <= p.y + p.h / 2 && Math.abs(b.x - mg.ship.x) <= p.w / 2 + b.r) {
+                    const off = Math.max(-1, Math.min(1, (b.x - mg.ship.x) / (p.w / 2)));
+                    b.vx = Math.sin(off * 1.05) * speed;
+                    b.vy = -Math.cos(off * 1.05) * speed;
+                    b.y = top - b.r;
+                    sfx.playTone(520, 'triangle', 0.08, 0.2);
+                    mgBurst(b.x, top, getActiveSkin().color, 5);
+                }
+
+                for (const br of mg.bricks) {
+                    if (!br.alive) continue;
+                    const nx = Math.max(br.x, Math.min(b.x, br.x + br.w));
+                    const ny = Math.max(br.y, Math.min(b.y, br.y + br.h));
+                    const dx = b.x - nx, dy = b.y - ny;
+                    if (dx * dx + dy * dy <= b.r * b.r) {
+                        if (Math.abs(dx) > Math.abs(dy)) b.vx = dx > 0 ? Math.abs(b.vx) : -Math.abs(b.vx);
+                        else if (dy !== 0) b.vy = dy > 0 ? Math.abs(b.vy) : -Math.abs(b.vy);
+                        else b.vy = -b.vy;
+                        br.hp--;
+                        if (br.hp <= 0) {
+                            br.alive = false;
+                            mgKill(br.x + br.w / 2, br.y + br.h / 2, tintRgba(br.tint, 1), 20);
+                        } else {
+                            sfx.playCloseCall();
+                            mgBurst(nx, ny, '#ffffff', 4);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            b.trail.unshift({ x: b.x, y: b.y });
+            if (b.trail.length > 12) b.trail.pop();
+
+            if (b.y - b.r > height) {
+                mg.invuln = 0;
+                mgHitShip();
+                b.stuck = true;
+                b.stuckT = 0;
+                b.trail = [];
+            }
+
+            if (mg.bricks.every(br => !br.alive)) {
+                score += 300 * level;
+                endMinigame(true);
+            }
+        }
+
+        // VOID INVADERS (Space Invaders-style)
+        function initInvaders() {
+            mg.ship.y = mg.target.y = height - 90;
+            spawnInvaderWave();
+        }
+
+        function spawnInvaderWave() {
+            const cols = mg.fw < 420 ? 6 : 8;
+            const sx = Math.min(52, (mg.fw - 40) / (cols + 0.5));
+            mg.inv = { sx, sy: 42, ox: mg.fx + (mg.fw - (cols - 1) * sx) / 2, oy: 110, dir: 1 };
+            mg.enemies = [];
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < cols; c++) {
+                    mg.enemies.push({ col: c, row: r, alive: true, tint: LEVEL_TINTS[(r + level + 1) % LEVEL_TINTS.length] });
+                }
+            }
+        }
+
+        function invX(e) { return mg.inv.ox + e.col * mg.inv.sx; }
+        function invY(e) { return mg.inv.oy + e.row * mg.inv.sy; }
+
+        function updateInvaders() {
+            const prog = mgProgress();
+            const inv = mg.inv, s = mg.ship;
+            const alive = mg.enemies.filter(e => e.alive);
+
+            if (!alive.length) {
+                mg.wave++;
+                score += 200 * level;
+                sfx.playPowerUp();
+                spawnInvaderWave();
+                return;
+            }
+
+            if (--mg.fireCd <= 0) {
+                mg.fireCd = 14;
+                mg.bullets.push({ x: s.x, y: s.y - 16, vx: 0, vy: -11 });
+            }
+
+            // Formation marches faster as it thins out
+            const frac = alive.length / mg.enemies.length;
+            const speed = (0.7 + Math.min(level, 8) * 0.08 + (mg.wave - 1) * 0.35) * (1 + (1 - frac) * 1.8);
+            inv.ox += inv.dir * speed;
+            let minX = Infinity, maxX = -Infinity, maxY = -Infinity;
+            alive.forEach(e => {
+                minX = Math.min(minX, invX(e));
+                maxX = Math.max(maxX, invX(e));
+                maxY = Math.max(maxY, invY(e));
+            });
+            if ((inv.dir > 0 && maxX > mg.fx + mg.fw - 22) || (inv.dir < 0 && minX < mg.fx + 22)) {
+                inv.dir *= -1;
+                inv.oy += 18;
+            }
+            // Reaching the ship's line costs a shield and shoves the formation back
+            if (maxY > s.y - 46) {
+                mg.invuln = 0;
+                mgHitShip();
+                inv.oy -= 140;
+            }
+
+            if (--mg.enemyFireCd <= 0) {
+                mg.enemyFireCd = Math.max(18, 55 - prog * 30 - mg.wave * 4);
+                const pick = alive[Math.floor(Math.random() * alive.length)];
+                const shooter = alive.filter(e => e.col === pick.col).reduce((a, e) => (e.row > a.row ? e : a));
+                mg.enemyBullets.push({ x: invX(shooter), y: invY(shooter) + 12, vx: 0, vy: 3.6 + prog * 1.8 });
+            }
+
+            for (const b of mg.bullets) {
+                for (const e of alive) {
+                    if (e.alive && Math.abs(b.x - invX(e)) < 16 && Math.abs(b.y - invY(e)) < 14) {
+                        e.alive = false;
+                        b.dead = true;
+                        mgKill(invX(e), invY(e), tintRgba(e.tint, 1), 20);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Bullets, enemy fire and falling pulse gems shared by all inside games
+        function updateMgShared() {
+            const s = mg.ship;
+            mg.bullets.forEach(b => { b.x += b.vx; b.y += b.vy; });
+            mg.bullets = mg.bullets.filter(b => !b.dead && b.y > -20);
+
+            mg.enemyBullets.forEach(b => {
+                b.x += b.vx;
+                b.y += b.vy;
+                if (Math.hypot(b.x - s.x, b.y - s.y) < 14) {
+                    b.dead = true;
+                    mgHitShip();
+                }
+            });
+            mg.enemyBullets = mg.enemyBullets.filter(b => !b.dead && b.y < height + 20 && b.x > -20 && b.x < width + 20);
+
+            const reach = mg.type === 'breaker' ? mg.paddle.w / 2 + 8 : 28;
+            mg.drops.forEach(d => {
+                d.y += 2.2;
+                if (Math.abs(d.x - s.x) < reach && Math.abs(d.y - s.y) < 24) {
+                    d.collected = true;
+                    gems++;
+                    runGems++;
+                    sfx.playGem();
+                    mgBurst(d.x, d.y, '#ffea00', 10);
+                }
+            });
+            mg.drops = mg.drops.filter(d => !d.collected && d.y < height + 20);
+        }
+
+        function updateMinigame() {
+            mg.t++;
+
+            // Keyboard fallback (arrows / WASD)
+            const kx = (mgKeys.ArrowRight || mgKeys.KeyD ? 1 : 0) - (mgKeys.ArrowLeft || mgKeys.KeyA ? 1 : 0);
+            const ky = (mgKeys.ArrowDown || mgKeys.KeyS ? 1 : 0) - (mgKeys.ArrowUp || mgKeys.KeyW ? 1 : 0);
+            if (kx || ky) {
+                mg.target.x += kx * 9;
+                mg.target.y += ky * 9;
+                clampMgTarget();
+            }
+
+            const s = mg.ship;
+            s.x += (mg.target.x - s.x) * 0.3;
+            if (mg.type === 'strike') s.y += (mg.target.y - s.y) * 0.3;
+            if (mg.invuln > 0) mg.invuln--;
+            mg.camY -= mg.type === 'strike' ? 3 : 0.8;
+
+            if (mg.phase === 'intro') {
+                if (mg.type === 'breaker') stickBall();
+                if (mg.t >= MG_INTRO_FRAMES) {
+                    mg.phase = 'play';
+                    mg.t = 0;
+                    sfx.playLevelUp();
+                }
+            } else if (mg.phase === 'play') {
+                mg.time--;
+                if (mg.type === 'strike') updateStrike();
+                else if (mg.type === 'breaker') updateBreaker();
+                else updateInvaders();
+                updateMgShared();
+                if (mg.phase === 'play' && mg.time <= 0) endMinigame(true);
+            } else if (mg.t >= MG_OUTRO_FRAMES) {
+                exitMinigame(mg.phase === 'won');
+                return;
+            }
+            mg.tapped = false;
+
+            for (let i = mg.particles.length - 1; i >= 0; i--) {
+                mg.particles[i].update();
+                if (mg.particles[i].life <= 0) mg.particles.splice(i, 1);
+            }
+        }
+
+        // --- INSIDE GAME RENDERING ---
+        function drawShip(x, y, skin) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = skin.trail;
+            ctx.shadowColor = skin.trail;
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.moveTo(-5, 10);
+            ctx.lineTo(0, 18 + Math.random() * 10);
+            ctx.lineTo(5, 10);
+            ctx.fill();
+
+            ctx.shadowColor = skin.color;
+            ctx.shadowBlur = 20;
+            ctx.strokeStyle = skin.color;
+            ctx.lineWidth = 2.5;
+            ctx.fillStyle = 'rgba(5, 15, 30, 0.9)';
+            ctx.beginPath();
+            ctx.moveTo(0, -20);
+            ctx.lineTo(16, 14);
+            ctx.lineTo(0, 8);
+            ctx.lineTo(-16, 14);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            const g = ctx.createRadialGradient(0, 1, 1, 0, 1, 7);
+            g.addColorStop(0, skin.secondary);
+            g.addColorStop(1, skin.color);
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(0, 1, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawDrone(x, y, r, color) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.strokeStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 12;
+            ctx.lineWidth = 2;
+            ctx.fillStyle = 'rgba(30, 5, 15, 0.85)';
+            ctx.beginPath();
+            ctx.moveTo(0, r);
+            ctx.lineTo(-r, -r * 0.5);
+            ctx.lineTo(-r * 0.35, -r * 0.2);
+            ctx.lineTo(0, -r * 0.7);
+            ctx.lineTo(r * 0.35, -r * 0.2);
+            ctx.lineTo(r, -r * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawInvader(x, y, r, color, frame) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.strokeStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 12;
+            ctx.lineWidth = 2;
+            ctx.fillStyle = 'rgba(10, 8, 25, 0.85)';
+            ctx.beginPath();
+            ctx.moveTo(-r, 0);
+            ctx.lineTo(-r * 0.6, -r * 0.7);
+            ctx.lineTo(r * 0.6, -r * 0.7);
+            ctx.lineTo(r, 0);
+            ctx.lineTo(r * 0.6, r * 0.5);
+            ctx.lineTo(-r * 0.6, r * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            const k = frame ? 0.35 : -0.15;
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.5, r * 0.5);
+            ctx.lineTo(-r * (0.8 + k), r);
+            ctx.moveTo(r * 0.5, r * 0.5);
+            ctx.lineTo(r * (0.8 + k), r);
+            ctx.moveTo(-r * 0.35, -r * 0.7);
+            ctx.lineTo(-r * 0.55, -r * 1.05);
+            ctx.moveTo(r * 0.35, -r * 0.7);
+            ctx.lineTo(r * 0.55, -r * 1.05);
+            ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-r * 0.4, -r * 0.3, r * 0.22, r * 0.22);
+            ctx.fillRect(r * 0.18, -r * 0.3, r * 0.22, r * 0.22);
+            ctx.restore();
+        }
+
+        function renderBreaker(skin) {
+            mg.bricks.forEach(br => {
+                if (!br.alive) return;
+                ctx.save();
+                ctx.strokeStyle = tintRgba(br.tint, 1);
+                ctx.shadowColor = tintRgba(br.tint, 1);
+                ctx.shadowBlur = 10;
+                ctx.lineWidth = 2;
+                ctx.fillStyle = br.hp > 1 ? tintRgba(br.tint, 0.35) : 'rgba(10, 8, 25, 0.85)';
+                ctx.fillRect(br.x, br.y, br.w, br.h);
+                ctx.strokeRect(br.x, br.y, br.w, br.h);
+                ctx.restore();
+            });
+
+            // Paddle
+            const p = mg.paddle;
+            ctx.save();
+            ctx.fillStyle = skin.color;
+            ctx.shadowColor = skin.color;
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(mg.ship.x - p.w / 2, p.y - p.h / 2, p.w, p.h, p.h / 2);
+            else ctx.rect(mg.ship.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+            ctx.fill();
+            ctx.fillStyle = skin.secondary;
+            ctx.fillRect(mg.ship.x - p.w / 2 + 10, p.y - 2, p.w - 20, 3);
+            ctx.restore();
+
+            // Ball: the player's orb with its trail
+            const b = mg.ball;
+            if (mg.phase === 'lost') return;
+            b.trail.forEach((t, i) => {
+                ctx.globalAlpha = (1 - i / b.trail.length) * 0.5;
+                ctx.fillStyle = skin.trail;
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, b.r * (1 - i / b.trail.length), 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+            ctx.save();
+            ctx.shadowColor = skin.color;
+            ctx.shadowBlur = 20;
+            const g = ctx.createRadialGradient(b.x, b.y, 2, b.x, b.y, b.r);
+            g.addColorStop(0, skin.secondary);
+            g.addColorStop(0.7, skin.color);
+            g.addColorStop(1, skin.color);
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function renderMinigameHud() {
+            const c = mg.tint;
+            ctx.save();
+            ctx.textBaseline = 'top';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = tintRgba(c, 0.95);
+            fillFitText(`PLANET ${mg.gate.level} • ${mg.game.name}`, 16, 16, width * 0.55, 11, 700);
+            ctx.font = '900 30px Orbitron, sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = tintRgba(c, 1);
+            ctx.shadowBlur = 12;
+            ctx.fillText((Math.max(0, mg.time) / 60).toFixed(1), 16, 32);
+
+            ctx.textAlign = 'right';
+            ctx.font = '22px sans-serif';
+            ctx.fillStyle = '#ff2d7a';
+            ctx.shadowColor = '#ff2d7a';
+            ctx.fillText('♥'.repeat(Math.max(0, mg.shields)) + '♡'.repeat(MG_SHIELDS - Math.max(0, mg.shields)), width - 16, 14);
+            ctx.font = '700 14px Orbitron, sans-serif';
+            ctx.fillStyle = '#ffea00';
+            ctx.shadowColor = '#ffea00';
+            ctx.fillText(`◆ ${gems}`, width - 16, 46);
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(30, 41, 59, 0.8)';
+            ctx.fillRect(16, 70, width - 32, 4);
+            ctx.fillStyle = tintRgba(c, 1);
+            ctx.fillRect(16, 70, (width - 32) * (mg.time / MINIGAME_FRAMES), 4);
+            ctx.restore();
+        }
+
+        function renderMinigameOverlay() {
+            const c = mg.tint;
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const cy = height * 0.36;
+
+            if (mg.phase === 'intro') {
+                // Portal wipe as the orb dives into the planet
+                const p = Math.min(mg.t / 30, 1);
+                if (p < 1) {
+                    ctx.fillStyle = tintRgba(c, 0.4 * (1 - p));
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.strokeStyle = tintRgba(c, 1 - p);
+                    ctx.shadowColor = tintRgba(c, 1);
+                    ctx.shadowBlur = 25;
+                    ctx.lineWidth = 6;
+                    ctx.beginPath();
+                    ctx.arc(width / 2, height / 2, Math.hypot(width, height) * 0.5 * p, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(3, 3, 8, 0.45)';
+                ctx.fillRect(0, 0, width, height);
+
+                ctx.fillStyle = tintRgba(c, 1);
+                fillFitText('ENTERING PLANET', width / 2, cy - 44, width - 40, 12, 700);
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = tintRgba(c, 1);
+                ctx.shadowBlur = 20;
+                fillFitText(mg.game.name, width / 2, cy, width - 40, 44, 900);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fde047';
+                fillFitText(mg.game.hint, width / 2, cy + 40, width - 40, 12, 700);
+                ctx.fillStyle = 'rgba(203, 213, 225, 0.85)';
+                fillFitText('PHONE: SLIDE YOUR THUMB ANYWHERE • PC: MOVE THE MOUSE', width / 2, cy + 62, width - 40, 10, 700);
+
+                if (mg.t > 30) {
+                    const n = Math.min(3, Math.ceil((MG_INTRO_FRAMES - mg.t) / 50));
+                    const k = ((MG_INTRO_FRAMES - mg.t) % 50) / 50;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowColor = tintRgba(c, 1);
+                    ctx.shadowBlur = 25;
+                    ctx.font = `900 ${Math.round(56 + k * 24)}px Orbitron, sans-serif`;
+                    ctx.fillText(String(n), width / 2, height * 0.6);
+                }
+            } else if (mg.phase !== 'play') {
+                const won = mg.phase === 'won';
+                ctx.fillStyle = `rgba(3, 3, 8, ${Math.min(mg.t / 30, 1) * 0.55})`;
+                ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = won ? tintRgba(c, 1) : '#ff0055';
+                ctx.shadowBlur = 25;
+                fillFitText(won ? 'PLANET CLEARED' : 'SIGNAL LOST', width / 2, cy, width - 40, 40, 900);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = won ? '#fde047' : '#f472b6';
+                fillFitText(won ? 'GRAVITY WALL DOWN • NEXT LEVEL UNLOCKED' : 'THE PLANET REPELLED YOU • -1 ♥', width / 2, cy + 42, width - 40, 13, 700);
+            }
+            ctx.restore();
+        }
+
+        function renderMinigame() {
+            const skin = getActiveSkin();
+            const s = mg.ship;
+            starfield.render(ctx, mg.camY);
+
+            // Side walls when the playfield is narrower than the screen
+            if (mg.fw < width) {
+                ctx.save();
+                ctx.strokeStyle = tintRgba(mg.tint, 0.4);
+                ctx.shadowColor = tintRgba(mg.tint, 1);
+                ctx.shadowBlur = 12;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(mg.fx, 0);
+                ctx.lineTo(mg.fx, height);
+                ctx.moveTo(mg.fx + mg.fw, 0);
+                ctx.lineTo(mg.fx + mg.fw, height);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            if (mg.type === 'breaker') {
+                renderBreaker(skin);
+            } else if (mg.type === 'invaders') {
+                const frame = Math.floor(mg.t / 20) % 2;
+                mg.enemies.forEach(e => { if (e.alive) drawInvader(invX(e), invY(e), 14, tintRgba(e.tint, 1), frame); });
+            } else {
+                mg.enemies.forEach(e => {
+                    if (e.kind === 'rock') e.render(ctx, 0);
+                    else drawDrone(e.x, e.y, e.radius, '#ff0055');
+                });
+            }
+
+            // Player shots
+            ctx.save();
+            ctx.strokeStyle = skin.color;
+            ctx.shadowColor = skin.color;
+            ctx.shadowBlur = 10;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            mg.bullets.forEach(b => { ctx.moveTo(b.x, b.y); ctx.lineTo(b.x, b.y + 10); });
+            ctx.stroke();
+
+            // Enemy shots
+            ctx.fillStyle = '#ff0055';
+            ctx.shadowColor = '#ff0055';
+            mg.enemyBullets.forEach(b => {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.restore();
+
+            mg.drops.forEach(d => d.render(ctx, 0));
+            mg.particles.forEach(pt => pt.render(ctx, 0));
+
+            if (mg.type !== 'breaker' && mg.phase !== 'lost') {
+                if (mg.invuln > 0 && Math.floor(mg.invuln / 6) % 2 === 0) ctx.globalAlpha = 0.35;
+                drawShip(s.x, s.y, skin);
+                ctx.globalAlpha = 1;
+            }
+
+            renderMinigameHud();
+            renderMinigameOverlay();
+        }
+
         // --- MAIN UPDATE & RENDER LOOP ---
         let lastTime = performance.now();
 
@@ -1237,7 +2193,7 @@
             // Clear Canvas Frame
             ctx.fillStyle = '#030308';
             ctx.fillRect(0, 0, width, height);
-            renderLevelTint(gameState === 'MENU' ? 1 : level);
+            renderLevelTint(gameState === 'MENU' ? 1 : (gameState === 'MINIGAME' && mg ? mg.gate.level + 1 : level));
 
             ctx.save();
 
@@ -1250,7 +2206,10 @@
                 if (screenShake < 0.5) screenShake = 0;
             }
 
-            if (gameState === 'PLAYING' || gameState === 'GAMEOVER') {
+            if (gameState === 'MINIGAME') {
+                updateMinigame();
+                if (mg) renderMinigame();
+            } else if (gameState === 'PLAYING' || gameState === 'GAMEOVER') {
                 // Update Camera Y tracking player smooth movement
                 let targetCamY = player.y - height * 0.65;
                 if (targetCamY < cameraY) { // Camera only moves upward (lower Y)
@@ -1265,8 +2224,10 @@
                     const newLevel = levelAtY(highestY);
                     if (newLevel > level) {
                         level = newLevel;
+                        createGate(level);
                         sfx.playLevelUp();
-                        showBanner(`LEVEL ${level}`, `FASTER • MORE ASTEROIDS • x${level} POINTS`, 'text-white neon-text-cyan');
+                        showBanner(`LEVEL ${level}`, gateBonus ? `PLANET BONUS +${gateBonus} • x${level} POINTS` : `FASTER • MORE ASTEROIDS • x${level} POINTS`, 'text-white neon-text-cyan');
+                        gateBonus = 0;
                         spawnExplosion(player.x, player.y, '#aa00ff', 30);
                         updateHud();
                     }
@@ -1293,7 +2254,29 @@
 
                 // Update Player Physics
                 if (gameState === 'PLAYING') {
-                    player.update(isHolding, nodes, getLevelConfig(level));
+                    const gate = activeGate();
+                    let anchorables = nodes;
+                    if (gate) {
+                        // Nodes past the gravity wall are out of reach; the planet itself can be grappled
+                        anchorables = nodes.filter(n => n.y > gate.barrierY);
+                        if (gate.cooldown <= 0) anchorables.push(gate);
+                    }
+                    player.update(isHolding, anchorables, getLevelConfig(level));
+
+                    if (gate) {
+                        if (gate.cooldown > 0) gate.cooldown--;
+                        // Gravity wall pushes the orb back down until the planet is cleared
+                        if (player.y - player.radius < gate.barrierY) {
+                            player.anchoredNode = null;
+                            player.y = gate.barrierY + player.radius;
+                            player.vy = Math.max(Math.abs(player.vy), getLevelConfig(level).minSpeed);
+                            sfx.playCloseCall();
+                            spawnExplosion(player.x, gate.barrierY, tintRgba(gate.tint, 1), 8);
+                        }
+                        if (gate.cooldown <= 0 && Math.hypot(player.x - gate.x, player.y - gate.y) < player.radius + gate.radius) {
+                            startMinigame(gate);
+                        }
+                    }
 
                     // Bottom edge acts as a springboard instead of ending the run
                     const floorY = cameraY + height - player.radius;
@@ -1311,6 +2294,7 @@
 
                 // Update & Render Nodes
                 nodes.forEach(n => n.render(ctx, cameraY));
+                gates.forEach(g => g.render(ctx, cameraY));
 
                 // Update & Render Asteroids & Collision Check
                 asteroids.forEach(a => {
@@ -1410,6 +2394,7 @@
                 asteroids = asteroids.filter(a => a.y - cameraY < height + 300);
                 pulses = pulses.filter(p => p.y - cameraY < height + 300);
                 powerUps = powerUps.filter(p => !p.collected && p.y - cameraY < height + 300);
+                gates = gates.filter(g => !g.cleared || g.y - cameraY < height + 300);
 
             } else {
                 // Background Rendering in Menu State
