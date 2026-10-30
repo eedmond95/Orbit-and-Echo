@@ -651,10 +651,10 @@ window.addEventListener('DOMContentLoaded',()=>{
             <!-- World leaderboard submission -->
             <div id="submitScoreBox" class="w-full mb-4">
                 <div class="flex space-x-2">
-                    <input id="playerNameInput" type="text" maxlength="20" placeholder="ENTER CALLSIGN" autocomplete="off"
+                    <input id="playerNameInput" type="text" maxlength="20" placeholder="ENTER CALLSIGN" aria-label="Leaderboard callsign" autocomplete="off"
                         class="flex-1 min-w-0 bg-slate-900/80 border border-cyan-500/30 focus:border-cyan-400 outline-none rounded-xl px-4 py-3 font-orbitron text-sm font-bold text-white placeholder-slate-500 uppercase">
                     <button id="submitScoreBtn" class="px-4 py-3 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-orbitron text-xs font-black transition whitespace-nowrap">
-                        🌍 SUBMIT
+                        SAVE NAME
                     </button>
                 </div>
                 <div id="submitScoreMsg" class="text-xs font-orbitron text-slate-400 mt-2 min-h-[1rem]"></div>
@@ -3147,7 +3147,7 @@ window.addEventListener('DOMContentLoaded',()=>{
             invulnTimer = 0;
             doubleTimer = 0;
             runGems = 0;
-            submittedScore = 0;
+            scoreSubmission = null;
             burstTimer = 0;
             warpTimer = 0;
             hyperTimer = 0;
@@ -3269,6 +3269,7 @@ window.addEventListener('DOMContentLoaded',()=>{
         }
 
         function triggerGameOver() {
+            if (gameState === 'GAMEOVER') return;
             if (tryUseLife()) return;
             gameState = 'GAMEOVER';
             lives = 0;
@@ -3288,8 +3289,10 @@ window.addEventListener('DOMContentLoaded',()=>{
             }
             localStorage.setItem('orbit_echo_gems', gems.toString());
 
+            const completedRun = beginScoreSubmission();
             setTimeout(() => {
-                document.getElementById('finalScore').innerText = Math.floor(score);
+                if (gameState !== 'GAMEOVER' || scoreSubmission !== completedRun) return;
+                document.getElementById('finalScore').innerText = completedRun.score;
                 document.getElementById('finalGems').innerText = `+${runGems}`;
                 document.getElementById('finalLevel').innerText = level;
                 resetSubmitBox();
@@ -5207,7 +5210,8 @@ window.addEventListener('DOMContentLoaded',()=>{
         let runId = null;
 
         let lastSubmittedId = null;
-        let submittedScore = 0;
+        let scoreSubmission = null;
+        const scoreSubmissionQueues = new Map();
 
         function escapeHtml(str) {
             return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -5256,55 +5260,106 @@ window.addEventListener('DOMContentLoaded',()=>{
             loadLeaderboard();
         }
 
-        function resetSubmitBox() {
-            const box = document.getElementById('submitScoreBox');
-            const btn = document.getElementById('submitScoreBtn');
-            const input = document.getElementById('playerNameInput');
-            const finalScore = Math.floor(score);
-            box.classList.toggle('hidden', finalScore <= 0 || finalScore === submittedScore);
-            input.value = localStorage.getItem('orbit_echo_name') || '';
-            input.disabled = false;
-            btn.disabled = false;
-            btn.innerText = '🌍 SUBMIT';
-            document.getElementById('submitScoreMsg').innerText = 'Post your run to the world leaderboard';
+        function validCallsign(name) {
+            return name.length > 0 && name.length <= 20 && /^[\p{L}\p{N} _.\-]+$/u.test(name);
         }
 
-        async function submitScore() {
-            const input = document.getElementById('playerNameInput');
+        function playerCallsign() {
+            const saved = (localStorage.getItem('orbit_echo_name') || '').trim();
+            if (validCallsign(saved)) return saved;
+            const adjectives = ['Neon', 'Lunar', 'Solar', 'Nova', 'Cosmic', 'Star', 'Astro', 'Echo'];
+            const nouns = ['Pilot', 'Comet', 'Falcon', 'Rider', 'Orbit', 'Scout', 'Raven', 'Spark'];
+            const random = crypto.getRandomValues(new Uint32Array(3));
+            const name = `${adjectives[random[0] % adjectives.length]}${nouns[random[1] % nouns.length]}-${String(random[2] % 10000).padStart(4, '0')}`;
+            localStorage.setItem('orbit_echo_name', name);
+            return name;
+        }
+
+        function beginScoreSubmission() {
+            // Capture the finished run now: a quick restart must not change its payload.
+            const record = {
+                runId, score: Math.floor(score), level, name: playerCallsign(),
+                status: 'new', savedName: null, result: null, version: 0,
+                queue: Promise.resolve()
+            };
+            scoreSubmission = record;
+            queueScoreSubmission(record, record.name);
+            return record;
+        }
+
+        function renderScoreSubmission(record) {
+            if (scoreSubmission !== record || gameState !== 'GAMEOVER') return;
+            document.getElementById('submitScoreBox').classList.remove('hidden');
             const btn = document.getElementById('submitScoreBtn');
             const msg = document.getElementById('submitScoreMsg');
-            if (btn.disabled) return;
-            const name = input.value.trim();
-            if (!name || name.length > 20) {
-                msg.innerText = 'Enter a callsign of 1–20 characters';
+            // Names can be edited while the automatic request is pending. Requests for
+            // the same run are serialized so an older reply cannot undo a newer name.
+            btn.disabled = false;
+            btn.textContent = record.status === 'failed' ? 'RETRY' : 'SAVE NAME';
+            if (record.status === 'saving') {
+                msg.textContent = `Auto-saving as ${record.name}… You can edit your callsign.`;
+            } else if (record.status === 'saved') {
+                const rank = record.result.top.findIndex(entry => entry.id === record.result.id);
+                msg.textContent = `Saved as ${record.savedName}${rank >= 0 ? ` • World rank #${rank + 1}` : ' • Keep climbing for the top 50'} • Edit name above`;
+            } else if (record.status === 'failed') {
+                msg.textContent = 'Could not save your score. Check your connection and tap RETRY.';
+            }
+        }
+
+        function resetSubmitBox() {
+            const record = scoreSubmission;
+            if (!record) return;
+            const input = document.getElementById('playerNameInput');
+            input.value = record.name;
+            input.disabled = false;
+            renderScoreSubmission(record);
+        }
+
+        function queueScoreSubmission(record, name) {
+            if (record.name === name && (record.status === 'saving' || record.status === 'saved')) return record.queue;
+            record.name = name;
+            record.status = 'saving';
+            const version = ++record.version;
+            renderScoreSubmission(record);
+            const previous = scoreSubmissionQueues.get(record.runId) || record.queue;
+            const queued = previous.then(async () => {
+                if (record.savedName === name) return;
+                const response = await leaderboardFetch({
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, score: record.score, level: record.level, runId: record.runId })
+                });
+                const data = await response.json();
+                if (!response.ok || !Array.isArray(data.top)) throw new Error('Score not saved');
+                record.savedName = name;
+                record.result = data;
+                if (scoreSubmission === record) lastSubmittedId = data.id;
+            }).then(() => {
+                if (record.version === version) record.status = 'saved';
+            }).catch(() => {
+                if (record.version === version) record.status = 'failed';
+            }).finally(() => {
+                if (scoreSubmissionQueues.get(record.runId) === queued) scoreSubmissionQueues.delete(record.runId);
+                renderScoreSubmission(record);
+            });
+            record.queue = queued;
+            scoreSubmissionQueues.set(record.runId, queued);
+            return queued;
+        }
+
+        function submitScore() {
+            const record = scoreSubmission;
+            if (!record || gameState !== 'GAMEOVER') return;
+            const input = document.getElementById('playerNameInput');
+            const name = input.value.trim() || record.name;
+            if (!validCallsign(name)) {
+                document.getElementById('submitScoreMsg').textContent = 'Use 1–20 letters, numbers, spaces, dots, underscores or hyphens';
                 input.focus();
                 return;
             }
-            const finalScore = Math.floor(score);
-            btn.disabled = true;
-            input.disabled = true;
-            btn.innerText = 'SENDING...';
-            try {
-                const res = await leaderboardFetch({
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, score: finalScore, level, runId })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Submit failed');
-                localStorage.setItem('orbit_echo_name', name);
-                lastSubmittedId = data.id;
-                submittedScore = finalScore;
-                const rank = data.top.findIndex(e => e.id === data.id);
-                btn.innerText = '✓ SENT';
-                msg.innerText = rank >= 0 ? `Logged! You placed #${rank + 1} in the world` : 'Logged! Not in the top 50 yet — keep climbing';
-                sfx.playGem();
-            } catch (err) {
-                btn.disabled = false;
-                input.disabled = false;
-                btn.innerText = '🌍 SUBMIT';
-                msg.innerText = err.message === 'Leaderboard not connected' ? 'Online score sharing is not available yet.' : err.message === 'Leaderboard unavailable' ? 'Leaderboard unavailable. Please try again.' : 'Could not submit this run. Check your callsign and try again.';
-            }
+            input.value = name;
+            localStorage.setItem('orbit_echo_name', name);
+            return queueScoreSubmission(record, name);
         }
 
         document.getElementById('openLeaderboardBtn').addEventListener('click', openLeaderboard);

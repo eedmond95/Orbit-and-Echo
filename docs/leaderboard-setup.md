@@ -40,16 +40,25 @@ Pages version sends score requests to the configured Netlify backend. Playing on
 Netlify itself automatically uses its own API. Before setup, the GitHub Pages game
 shows an unavailable state and does not send scores to an obsolete service.
 
+At game over, the game automatically posts the finished score with the player's
+saved callsign. New players receive a generated callsign such as `NeonComet-1842`;
+they do not need to enter a name or press Submit. The game-over screen lets them
+change their callsign using **SAVE NAME**, which updates that same leaderboard
+entry and remembers the choice for future runs. Even zero-point runs are submitted.
+If saving fails, the game displays **RETRY** rather than claiming success.
+
 The API handles cross-origin preflight, validates submissions, and ranks scores.
 Conditional storage updates prevent concurrent submissions from overwriting each
-other. Repeating a run's UUID does not duplicate its entry in the top 50. Requests
-that submit scores are not automatically retried by the browser.
+other. Repeating a run's UUID does not duplicate its entry in the top 50. Callsign changes
+update the same entry, and a revived run's higher final score replaces its earlier
+score. Delayed lower scores cannot overwrite higher scores. The browser serializes
+requests for the same run; a failed save can be retried with its original UUID.
 
 For an existing deployment with a configured `NETLIFY_DB_URL`, the previous database
 adapter remains available and keeps using that database. The legacy schema and
 migration files are retained for compatibility; new users do not need them.
 
-Run `npm ci` and `npm test` for the 11 API/storage tests. They use isolated storage
+Run `npm ci` and `npm test` for the API/storage tests. They use isolated storage
 fixtures and do not establish that a public Netlify deployment works. The score cap
 and input validation do not provide server-authoritative anti-cheat protection.
 

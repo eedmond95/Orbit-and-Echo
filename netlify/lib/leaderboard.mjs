@@ -26,7 +26,7 @@ export function createLeaderboardHandler(store, logger = console) {
       if (!name || name.length > 20 || !/^[\p{L}\p{N} _.\-]+$/u.test(name)) {
         return json({ error: 'Use 1–20 letters, numbers, spaces, dots, underscores or hyphens' }, 400);
       }
-      if (!Number.isSafeInteger(body.score) || body.score <= 0 || body.score > 50_000_000) {
+      if (!Number.isSafeInteger(body.score) || body.score < 0 || body.score > 50_000_000) {
         return json({ error: 'Invalid score' }, 400);
       }
       if (!Number.isSafeInteger(body.level) || body.level < 1 || body.level > 999) {

@@ -55,7 +55,7 @@ test('rejects invalid submissions without saving them', async () => {
   const { handler, rows } = fixture();
   for (const changes of [
     { name: '' }, { name: 'A'.repeat(21) }, { name: '<script>' }, { name: 123 },
-    { score: -1 }, { score: 0 }, { score: 50_000_001 }, { score: 1.5 }, { score: '100' },
+    { score: -1 }, { score: 50_000_001 }, { score: 1.5 }, { score: '100' },
     { level: 0 }, { level: 1000 }, { level: 1.5 },
     { runId: '../bad-path' }, { runId: 12 },
   ]) {
@@ -71,6 +71,11 @@ test('bad JSON and unsupported methods get explicit errors', async () => {
   const broken = new Request('https://game.netlify.app/api/leaderboard', { method: 'POST', body: '{broken' });
   assert.equal((await handler(broken)).status, 400);
   assert.equal((await handler(request('DELETE'))).status, 405);
+});
+
+test('automatically submitted zero-point runs are accepted', async () => {
+  const { handler } = fixture();
+  assert.equal((await handler(request('POST', { ...run, score: 0 }))).status, 201);
 });
 
 test('storage failures still include CORS headers and no private error details', async () => {
@@ -118,6 +123,30 @@ test('repeating the same run ID does not create another leaderboard entry', asyn
   await Promise.all([scores.insertScore(entry), scores.insertScore(entry)]);
   assert.equal((await scores.topScores()).length, 1);
   assert.equal((await scores.topScores())[0].id, entry.runId);
+});
+
+test('editing an automatic callsign updates the same row and preserves its timestamp', async () => {
+  const { scores } = blobFixture();
+  const entry = { ...run, runId: '6fe9a17c-a001-4be3-8896-ce2c9f0b01aa' };
+  const first = await scores.insertScore(entry);
+  await scores.insertScore({ ...entry, name: 'Chosen Name' });
+  const top = await scores.topScores();
+  assert.equal(top.length, 1);
+  assert.equal(top[0].name, 'Chosen Name');
+  assert.equal(top[0].createdAt, first.createdAt);
+});
+
+test('revived runs replace their earlier score and delayed lower scores cannot undo it', async () => {
+  const { scores } = blobFixture();
+  const entry = { ...run, runId: '6fe9a17c-a001-4be3-8896-ce2c9f0b01aa' };
+  await scores.insertScore(entry);
+  await scores.insertScore({ ...entry, score: 2500, level: 3, name: 'Final Name' });
+  await scores.insertScore(entry);
+  const top = await scores.topScores();
+  assert.equal(top.length, 1);
+  assert.equal(top[0].score, 2500);
+  assert.equal(top[0].level, 3);
+  assert.equal(top[0].name, 'Final Name');
 });
 
 test('built-in storage keeps only the top 50 and does not overwrite them with a lower score', async () => {
