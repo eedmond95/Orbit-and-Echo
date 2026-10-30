@@ -5158,7 +5158,7 @@ window.addEventListener('DOMContentLoaded',()=>{
         // --- WORLD LEADERBOARD ---
         // Set the public HTTPS API URL after deploying the backend to Netlify.
         // GitHub Pages has no backend of its own. Never put API keys here.
-        const LEADERBOARD_API = '';
+        const LEADERBOARD_API = 'https://orbit-and-echo.netlify.app/api/leaderboard';
         const leaderboardCandidates = location.hostname.endsWith('.github.io') || location.protocol === 'file:'
             ? [LEADERBOARD_API].filter(Boolean)
             : [...new Set([new URL('/api/leaderboard', location.href).href, LEADERBOARD_API].filter(Boolean))];

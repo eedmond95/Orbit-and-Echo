@@ -13,6 +13,10 @@ checkout.
 
 ## Shared leaderboard: one-time setup
 
+Current API: `https://orbit-and-echo.netlify.app/api/leaderboard`. The GitHub Pages
+game is configured to use this site. The steps below document how to recreate or
+replace the deployment.
+
 GitHub Pages hosts the game, but it cannot run the shared score service. The backend
 in this repository runs on Netlify and uses **Netlify Blobs**, which is configured
 by the hosting platform. No database, SQL migration, or manually created API key is

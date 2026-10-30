@@ -1,12 +1,14 @@
 """Exercise the real game UI at a GitHub Pages origin with a controlled API."""
 from pathlib import Path
 import json
+import re
 
 from playwright.sync_api import sync_playwright
 
 html = (Path(__file__).resolve().parents[1] / 'index.html').read_text()
 pages_url = 'https://eedmond95.github.io/Orbit-and-Echo/'
-api_url = 'https://orbit-echo-test.netlify.app/api/leaderboard'
+api_url = re.search(r"const LEADERBOARD_API = '([^']+)';", html).group(1)
+assert api_url == 'https://orbit-and-echo.netlify.app/api/leaderboard'
 entries = [{'id': 1, 'name': 'Existing Pilot', 'score': 1000, 'level': 1}]
 
 with sync_playwright() as p:
@@ -20,7 +22,7 @@ with sync_playwright() as p:
         def route_request(route):
             req = route.request
             if req.url == origin:
-                content = html.replace("const LEADERBOARD_API = '';", f"const LEADERBOARD_API = '{api_url}';") if configured else html
+                content = html if configured else html.replace(f"const LEADERBOARD_API = '{api_url}';", "const LEADERBOARD_API = '';")
                 return route.fulfill(status=200, content_type='text/html', body=content)
             if req.url == api_url:
                 calls.append((req.method, req.url))
@@ -81,6 +83,8 @@ with sync_playwright() as p:
     # A separate browser context sees the shared entries, not localStorage data.
     scenario(pages_url, submit_first=True)
     print('PASS fresh browser context can submit before opening the leaderboard')
+    scenario('https://orbit-and-echo.netlify.app/', submit_first=True)
+    print('PASS Netlify-hosted game uses its own leaderboard API')
     scenario('https://static.example/Orbit-and-Echo/', submit_first=True)
     print('PASS custom static host: GET discovers API; POST never targets the static host')
     scenario(pages_url, fail_post=True)
