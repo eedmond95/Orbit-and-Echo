@@ -73,6 +73,50 @@
             transform: translateY(1px);
         }
 
+        /* Pilot HUD: angular anime portrait frame & gauges */
+        .pilot-portrait {
+            clip-path: polygon(14% 0, 100% 0, 100% 86%, 86% 100%, 0 100%, 0 14%);
+            border: 2px solid var(--pilot, #c084fc);
+            box-shadow: 0 0 14px var(--pilot, #c084fc);
+            transition: filter 0.2s ease;
+        }
+        .pilot-portrait.pilot-hit {
+            filter: saturate(0.3) brightness(1.4) hue-rotate(-60deg);
+        }
+        .pilot-portrait.pilot-ready {
+            animation: pilotGlow 0.6s ease-in-out infinite alternate;
+        }
+        @keyframes pilotGlow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.35) drop-shadow(0 0 6px #ff4dff); }
+        }
+        .gauge {
+            height: 5px;
+            background: rgba(30, 41, 59, 0.9);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .gauge > div {
+            height: 100%;
+            transition: width 0.08s linear;
+        }
+        .mp-full {
+            background: linear-gradient(90deg, #ff4dff, #00f0ff, #ff4dff);
+            background-size: 200% 100%;
+            animation: mpFlow 0.8s linear infinite;
+        }
+        @keyframes mpFlow {
+            to { background-position: -200% 0; }
+        }
+        #novaBtn {
+            animation: novaPulse 0.7s ease-in-out infinite alternate;
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+        }
+        @keyframes novaPulse {
+            from { box-shadow: 0 0 12px #ff4dff; transform: scale(1); }
+            to { box-shadow: 0 0 30px #00f0ff; transform: scale(1.06); }
+        }
+
         /* Custom scrollbar for shop */
         ::-webkit-scrollbar {
             width: 6px;
@@ -99,7 +143,6 @@
             <div id="hudScore" class="font-orbitron text-4xl md:text-5xl font-extrabold text-white neon-text-cyan">0</div>
             <div class="flex items-center space-x-2 mt-1">
                 <span id="hudLevel" class="font-orbitron text-xs font-bold text-purple-300 bg-purple-900/50 border border-purple-400/40 px-2 py-0.5 rounded-full">LV 1</span>
-                <span id="hudMult" class="font-orbitron text-xs font-bold text-yellow-300">x1 PTS</span>
             </div>
             <div id="hudDouble" class="mt-2 hidden">
                 <div class="font-orbitron text-sm font-black text-yellow-300 neon-text-pink">2X POINTS <span id="hudDoubleTime">8</span>s</div>
@@ -112,22 +155,57 @@
             <div id="hudHyper" class="font-orbitron text-xs font-black tracking-widest text-fuchsia-300 opacity-0 transition-opacity duration-200">HYPER-DRIVE <span id="hudStreak">●○○</span></div>
         </div>
 
-        <!-- Light Pulse Currency Count -->
-        <div class="flex items-center space-x-2 glass-panel px-4 py-2 rounded-full">
-            <svg class="w-5 h-5 text-yellow-400 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
-                <polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7"></polygon>
-            </svg>
-            <span id="hudGems" class="font-orbitron font-bold text-xl text-yellow-300">0</span>
+        <div class="flex flex-col items-end space-y-2">
+            <!-- Light Pulse Currency Count -->
+            <div class="flex items-center space-x-2 glass-panel px-4 py-2 rounded-full">
+                <svg class="w-5 h-5 text-yellow-400 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                    <polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7"></polygon>
+                </svg>
+                <span id="hudGems" class="font-orbitron font-bold text-xl text-yellow-300">0</span>
+            </div>
+
+            <!-- Pilot command card: portrait, shields, energy, multiplier & MP -->
+            <div id="pilotCard" class="glass-panel rounded-xl p-2 flex items-center space-x-2 w-48">
+                <div class="relative shrink-0">
+                    <img id="hudPilotImg" src="assets/pilots/lyra-portrait.webp" alt="Pilot" class="pilot-portrait w-14 h-14 object-cover">
+                    <div id="hudPilotName" class="absolute -bottom-1.5 left-0 right-0 text-center font-orbitron text-[8px] font-black tracking-widest text-white bg-slate-950/90 rounded">LYRA</div>
+                </div>
+                <div class="flex-1 min-w-0 space-y-1">
+                    <div class="flex justify-between items-center">
+                        <span id="hudLives" class="text-xs text-pink-500 leading-none tracking-tighter whitespace-nowrap transition-opacity duration-300"></span>
+                        <span id="hudMult" class="font-orbitron text-[10px] font-bold text-yellow-300 whitespace-nowrap ml-1">x1 PTS</span>
+                    </div>
+                    <div>
+                        <div class="flex justify-between font-orbitron text-[8px] font-bold text-orange-300 tracking-widest"><span>ENERGY</span><span id="hudEnergyTxt"></span></div>
+                        <div class="gauge"><div id="hudEnergyBar" class="bg-gradient-to-r from-cyan-400 to-orange-400" style="width:0%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between font-orbitron text-[8px] font-bold text-fuchsia-300 tracking-widest"><span>MP</span><span id="hudMpTxt">0%</span></div>
+                        <div class="gauge"><div id="hudMpBar" class="bg-gradient-to-r from-fuchsia-500 to-cyan-400" style="width:0%"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pilot comms callouts -->
+            <div id="pilotComms" class="font-orbitron text-[11px] font-bold text-right max-w-[13rem] leading-tight opacity-0 transition-opacity duration-200"></div>
         </div>
     </div>
 
-    <!-- Lives display (top-right, under gems) -->
-    <div id="hudLives" class="absolute right-4 md:right-6 top-20 md:top-24 text-2xl text-pink-500 pointer-events-none z-10 transition-opacity duration-300 opacity-0 tracking-wider"></div>
+    <!-- Hyper-Nova special skill button (appears when MP is full) -->
+    <button id="novaBtn" class="hidden absolute right-4 md:right-6 bottom-24 z-20 font-orbitron font-black text-sm tracking-widest text-white bg-gradient-to-r from-fuchsia-600 to-cyan-500 px-6 py-3">
+        ✦ HYPER-NOVA
+    </button>
 
     <!-- Center banner for level-ups & power-ups -->
     <div id="banner" class="absolute left-0 right-0 top-1/3 text-center pointer-events-none z-10 opacity-0 transition-all duration-500">
         <div id="bannerTitle" class="font-orbitron text-4xl md:text-6xl font-black text-white neon-text-cyan">LEVEL 2</div>
         <div id="bannerSub" class="font-orbitron text-sm md:text-base font-bold text-yellow-300 mt-2 tracking-widest"></div>
+        <div id="bannerPilot" class="hidden mt-3">
+            <div class="inline-flex items-center space-x-2 bg-slate-950/70 border border-fuchsia-400/40 rounded-full pl-1 pr-4 py-1">
+                <img id="bannerPilotImg" src="assets/pilots/lyra-portrait.webp" alt="" class="w-7 h-7 rounded-full object-cover">
+                <span id="bannerPilotText" class="font-orbitron text-xs md:text-sm font-bold text-white"></span>
+            </div>
+        </div>
     </div>
 
     <!-- Small toast for mission completions -->
@@ -153,6 +231,15 @@
             <p class="text-cyan-200 text-sm md:text-base font-semibold tracking-widest max-w-xs md:max-w-md mb-8">
                 TAP & HOLD TO ANCHOR • HOLD LONGER TO OVERCHARGE • RELEASE TO FLING
             </p>
+
+            <!-- Active pilot -->
+            <div class="flex items-center space-x-3 glass-panel rounded-full pl-1.5 pr-5 py-1.5 mb-5">
+                <img id="menuPilotImg" src="assets/pilots/lyra-portrait.webp" alt="Pilot" class="w-11 h-11 rounded-full object-cover border-2 border-fuchsia-400">
+                <div class="text-left">
+                    <div class="text-[10px] font-orbitron text-slate-400 tracking-widest">PILOT</div>
+                    <div id="menuPilotName" class="font-orbitron text-sm font-black text-white">LYRA • ASTRA SCOUT</div>
+                </div>
+            </div>
 
             <!-- Play Button -->
             <button id="startPlayBtn" class="neon-btn font-orbitron bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xl md:text-2xl px-12 py-4 rounded-full tracking-wider uppercase mb-4">
@@ -236,7 +323,7 @@
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h2 class="font-orbitron text-2xl font-black text-cyan-400">SHOP MATRIX</h2>
-                    <p class="text-xs text-slate-400">Skins, trail effects & synth sound packs</p>
+                    <p class="text-xs text-slate-400">Pilots, skins, trail effects & synth sound packs</p>
                 </div>
                 <div class="flex items-center space-x-2 bg-slate-900/80 px-4 py-2 rounded-full border border-yellow-500/30">
                     <span class="text-yellow-400">⚡</span>
@@ -245,7 +332,8 @@
             </div>
 
             <!-- Shop category tabs -->
-            <div id="shopTabs" class="grid grid-cols-3 gap-2 mb-4">
+            <div id="shopTabs" class="grid grid-cols-4 gap-2 mb-4">
+                <button data-tab="pilots" class="shop-tab py-2 rounded-lg font-orbitron text-xs font-bold transition">PILOTS</button>
                 <button data-tab="skins" class="shop-tab py-2 rounded-lg font-orbitron text-xs font-bold transition">SKINS</button>
                 <button data-tab="trails" class="shop-tab py-2 rounded-lg font-orbitron text-xs font-bold transition">TRAILS</button>
                 <button data-tab="sounds" class="shop-tab py-2 rounded-lg font-orbitron text-xs font-bold transition">SOUND</button>
@@ -322,6 +410,13 @@
                     <div>
                         <strong class="text-white block font-orbitron">HYPER-DRIVE STREAKS</strong>
                         Skim 3 asteroids in quick succession to unleash a neon shockwave that vacuums every nearby Light Pulse straight into your orb. Faster flight and bigger combos make the whole galaxy pulse harder.
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="bg-fuchsia-500/20 p-2 rounded-lg text-fuchsia-300 text-lg font-bold font-orbitron">09</div>
+                    <div>
+                        <strong class="text-white block font-orbitron">PILOTS & HYPER-NOVA</strong>
+                        Your pilot (Lyra by default) calls out the action from the top-right HUD. Fill her <b class="text-fuchsia-300">MP</b> gauge by grabbing glowing violet MP crystals and skimming asteroids. At 100% tap <b class="text-fuchsia-300">✦ HYPER-NOVA</b> (or press E) — or just release a max overcharge — to unleash a full-screen sonic burst that smashes asteroids, vacuums every Light Pulse and makes you briefly invulnerable. Unlock Nova, the Solar Ace, in the Shop Matrix.
                     </div>
                 </div>
             </div>
@@ -600,6 +695,74 @@
                 if (energy > 0.75 && count % 2 === 0) this.playNoise(0.04, 0.05, 9000, 6000, 'highpass');
             }
 
+            // "Echoes": robotic formant voice. Each vowel in the line becomes a quick syllable,
+            // a sawtooth through two bandpass formants, so callouts sound like radio chatter.
+            playVoice(text, pitch = 1) {
+                if (!this.enabled || !this.ctx) return;
+                const FORMANTS = { a: [730, 1090], e: [530, 1840], i: [270, 2290], o: [570, 840], u: [300, 870], y: [270, 2290] };
+                const vowels = (text.toLowerCase().match(/[aeiouy]+/g) || ['a']).slice(0, 5).map(v => v[0]);
+                const rising = /[!?]$/.test(text.trim());
+                try {
+                    const c = this.ctx, t0 = c.currentTime + 0.07;
+                    const out = c.createGain();
+                    out.gain.value = 0.16;
+                    const radio = c.createBiquadFilter();
+                    radio.type = 'highpass';
+                    radio.frequency.value = 280;
+                    radio.connect(out);
+                    out.connect(c.destination);
+                    vowels.forEach((v, i) => {
+                        const t = t0 + i * 0.07, last = i === vowels.length - 1;
+                        const f0 = 210 * pitch * (1 + (i % 2) * 0.12 + (last && rising ? 0.25 : 0));
+                        const osc = c.createOscillator();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(f0, t);
+                        osc.frequency.linearRampToValueAtTime(f0 * (last && rising ? 1.3 : 0.92), t + 0.07);
+                        const env = c.createGain();
+                        env.gain.setValueAtTime(0.0001, t);
+                        env.gain.linearRampToValueAtTime(1, t + 0.012);
+                        env.gain.exponentialRampToValueAtTime(0.0001, t + 0.075);
+                        osc.connect(env);
+                        FORMANTS[v].forEach((f, k) => {
+                            const bp = c.createBiquadFilter();
+                            bp.type = 'bandpass';
+                            bp.frequency.value = f * (0.9 + pitch * 0.1);
+                            bp.Q.value = 9;
+                            const g = c.createGain();
+                            g.gain.value = k ? 0.5 : 1;
+                            env.connect(bp);
+                            bp.connect(g);
+                            g.connect(radio);
+                        });
+                        osc.start(t);
+                        osc.stop(t + 0.09);
+                    });
+                } catch(e){}
+            }
+
+            // Two-tone comms chirp that opens every pilot callout
+            playComms() {
+                this.playTone(1760, 'sine', 0.04, 0.08);
+                setTimeout(() => this.playTone(2350, 'sine', 0.05, 0.07), 40);
+            }
+
+            playMpReady() {
+                [784, 1175, 1568, 2093].forEach((f, i) => setTimeout(() => this.playTone(f, 'sine', 0.14, 0.16), i * 50));
+            }
+
+            // Cut-in whoosh: noise sweep plus a rising power-up chord
+            playCutIn() {
+                this.playNoise(0.35, 0.35, 600, 7000, 'bandpass');
+                [523, 784, 1047].forEach((f, i) => this.voice(f, 'triangle', 0.4, 0.12, f * 2));
+            }
+
+            playHyperNova() {
+                this.playNoise(1.0, 0.7, 4000, 60);
+                this.voice(70, 'sawtooth', 0.8, 0.4, 900);
+                this.voice(1400, 'sine', 0.6, 0.2, 200);
+                [1047, 1319, 1568, 2093].forEach((f, i) => setTimeout(() => this.playTone(f, 'triangle', 0.2, 0.16), 120 + i * 60));
+            }
+
             getNoiseBuffer() {
                 if (!this.noiseBuffer) {
                     const size = Math.floor(this.ctx.sampleRate * 1.2);
@@ -662,8 +825,24 @@
             { id: 'scifi', name: 'SCI-FI LASER', cost: 350, icon: '🔫', desc: 'Futuristic laser zaps & sweeps', demo: [900, 1200, 1500] }
         ];
 
+        // Pilots: anime portrait for the HUD & minigames, a manga cut-in for the Hyper-Nova,
+        // a signature wake around the orb and their own voice pitch for callouts
+        const PILOTS = [
+            { id: 'lyra', name: 'LYRA', title: 'ASTRA SCOUT', cost: 0, color: '#c084fc', glow: '#00f0ff', rgb: ['176,38,255', '0,240,255'], voice: 1.15, focus: 0.55,
+              portrait: 'assets/pilots/lyra-portrait.webp', cutin: 'assets/pilots/lyra-cutin.webp', desc: 'Purple-cyan wake • star-dust bursts on every slingshot' },
+            { id: 'nova', name: 'NOVA', title: 'SOLAR ACE', cost: 300, color: '#ffaa00', glow: '#ffd23f', rgb: ['255,120,0', '255,214,64'], voice: 0.95, focus: 0.5,
+              portrait: 'assets/pilots/nova-portrait.webp', cutin: 'assets/pilots/nova-cutin.webp', desc: 'Blazing solar flare wake • flare blasts on close skims' }
+        ];
+        const pilotArt = {};
+        PILOTS.forEach(p => {
+            pilotArt[p.id] = { portrait: new Image(), cutin: new Image() };
+            pilotArt[p.id].portrait.src = p.portrait;
+            pilotArt[p.id].cutin.src = p.cutin;
+        });
+
         // Shop categories share one buy/equip flow; each keeps its own owned list & active item
         const SHOP = {
+            pilots: { items: PILOTS, ownedKey: 'orbit_echo_pilots', activeKey: 'orbit_echo_active_pilot', label: 'PILOT' },
             skins: { items: SKINS, ownedKey: 'orbit_echo_skins', activeKey: 'orbit_echo_active_skin', label: 'SKIN' },
             trails: { items: TRAILS, ownedKey: 'orbit_echo_trails', activeKey: 'orbit_echo_active_trail', label: 'TRAIL' },
             sounds: { items: SOUND_PACKS, ownedKey: 'orbit_echo_sounds', activeKey: 'orbit_echo_active_sound', label: 'SOUND PACK' }
@@ -723,6 +902,19 @@
         let flashColor = '255,255,255';
         const rhythm = { phase: 0, beat: 0, energy: 0.1, breath: 0, time: 0, count: 0 };
 
+        // Pilot MP gauge & Manga Cut-In special (Hyper-Nova)
+        const MP_MAX = 100;
+        const MP_PER_SKIM = 10;
+        const MP_PER_GEM = 25;
+        const CUTIN_FRAMES = 72;       // ~1.2s cut-in; the blast fires when the text switches
+        const CUTIN_BLAST_FRAME = 26;
+        let mp = 0;
+        let cutin = null;
+        let pilotLast = {};            // per-callout cooldowns (frameCount)
+        let pilotBusyUntil = 0;
+        let pilotVoiceFrame = -999;
+        let mgComms = null;            // callout shown on the canvas during planet games
+
         // Difficulty scales with level, levelling off so it stays playable
         function getLevelConfig(lv) {
             const t = Math.min(lv - 1, 12);
@@ -743,9 +935,9 @@
         const MG_OUTRO_FRAMES = 120;
         const MG_SHIELDS = 3;
         const MINIGAMES = [
-            { id: 'strike', name: 'SKY STRIKE', hint: 'MOVE TO STEER • AUTO-FIRE • SURVIVE 30s' },
-            { id: 'breaker', name: 'CORE BREAKER', hint: 'MOVE THE PADDLE • TAP TO LAUNCH • CLEAR OR SURVIVE' },
-            { id: 'invaders', name: 'VOID INVADERS', hint: 'MOVE TO DODGE • AUTO-FIRE • HOLD THE LINE 30s' }
+            { id: 'strike', name: 'SKY STRIKE', hint: 'MOVE TO STEER • AUTO-FIRE • SURVIVE 30s', brief: 'Weapons hot. Survive thirty seconds!' },
+            { id: 'breaker', name: 'CORE BREAKER', hint: 'MOVE THE PADDLE • TAP TO LAUNCH • CLEAR OR SURVIVE', brief: "Crack that core — don't drop the orb!" },
+            { id: 'invaders', name: 'VOID INVADERS', hint: 'MOVE TO DODGE • AUTO-FIRE • HOLD THE LINE 30s', brief: 'Invaders inbound. Hold the line!' }
         ];
 
         function minigameForLevel(lv) {
@@ -953,8 +1145,12 @@
                     if (this.anchoredNode) {
                         // Flung into free trajectory
                         this.anchoredNode = null;
+                        pilotFlourish('sling', this.x, this.y);
                         if (this.charge >= CHARGE_MIN) {
+                            const full = this.charge >= 1;
                             triggerOvercharge(this.charge);
+                            // A full overcharge release also unleashes a ready Hyper-Nova
+                            if (full && mp >= MP_MAX) activateHyperNova();
                         } else {
                             sfx.playRelease();
                             // A max-speed fling still smears the screen a little
@@ -1018,6 +1214,43 @@
                     p.life -= 0.012;
                 });
                 this.petals = this.petals.filter(p => p.life > 0);
+            }
+
+            // Lyra: purple & cyan strands spiralling round the wake. Nova: a flickering solar flare.
+            renderPilotWake(ctx, camY) {
+                const trail = this.trail, len = trail.length;
+                if (len < 3) return;
+                const p = getActivePilot();
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                if (p.id === 'nova') {
+                    for (let i = 1; i < len; i++) {
+                        const t = trail[i], k = 1 - i / len;
+                        const r = this.radius * (0.5 + k * 0.9) * (0.75 + Math.random() * 0.5);
+                        ctx.fillStyle = `rgba(${p.rgb[i % 2]}, ${0.28 * k})`;
+                        ctx.beginPath();
+                        ctx.arc(t.x + (Math.random() - 0.5) * 5, t.y - camY + (Math.random() - 0.5) * 5, r, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else {
+                    ctx.lineWidth = 2.5;
+                    ctx.lineCap = 'round';
+                    p.rgb.forEach((rgb, strand) => {
+                        ctx.strokeStyle = `rgba(${rgb}, 0.7)`;
+                        ctx.shadowColor = `rgb(${rgb})`;
+                        ctx.shadowBlur = 10;
+                        ctx.beginPath();
+                        for (let i = 1; i < len; i++) {
+                            const a = trail[i - 1], b = trail[i];
+                            const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+                            const off = Math.sin(i * 0.8 - frameCount * 0.3 + strand * Math.PI) * this.radius * (1 - i / len);
+                            const x = b.x - dy / d * off, y = b.y - camY + dx / d * off;
+                            if (i === 1) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                        }
+                        ctx.stroke();
+                    });
+                }
+                ctx.restore();
             }
 
             renderTrail(ctx, camY, skin) {
@@ -1172,7 +1405,8 @@
                     ctx.restore();
                 }
 
-                // Render Motion Trail
+                // Render Motion Trail with the pilot's signature wake
+                this.renderPilotWake(ctx, camY);
                 this.renderTrail(ctx, camY, skin);
                 ctx.globalAlpha = blink ? 0.35 : 1.0;
 
@@ -1381,6 +1615,50 @@
                 ctx.closePath();
                 ctx.fill();
 
+                ctx.restore();
+            }
+        }
+
+        // MP crystal: violet-cyan hexagon that charges the pilot's MP gauge
+        class MpGem {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 10;
+                this.collected = false;
+                this.angle = Math.random() * Math.PI * 2;
+            }
+
+            render(ctx, camY) {
+                if (this.collected) return;
+                this.angle += 0.04;
+                const renderY = this.y - camY + Math.sin(this.angle * 1.5) * 3;
+                const r = this.radius + Math.sin(this.angle * 3) * 1.5;
+                ctx.save();
+                ctx.translate(this.x, renderY);
+                ctx.rotate(this.angle);
+                ctx.shadowColor = '#ff4dff';
+                ctx.shadowBlur = 22;
+                const g = ctx.createLinearGradient(-r, -r, r, r);
+                g.addColorStop(0, '#ff4dff');
+                g.addColorStop(1, '#00f0ff');
+                ctx.fillStyle = g;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const a = i * Math.PI / 3;
+                    ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.rotate(-this.angle * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '900 8px Orbitron, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('MP', 0, 0.5);
                 ctx.restore();
             }
         }
@@ -1831,6 +2109,7 @@
         let asteroids = [];
         let pulses = [];
         let powerUps = [];
+        let mpGems = [];
         let particles = [];
         let gates = [];
         let gateBonus = 0;
@@ -1900,6 +2179,12 @@
                     }
                 }
 
+                // MP crystals float a little off the node's line
+                if (Math.random() < 0.12) {
+                    const gx = Math.max(40, Math.min(width - 40, nx + (Math.random() < 0.5 ? -1 : 1) * (90 + Math.random() * 60)));
+                    if (!nearGate(gx, midY, 160)) mpGems.push(new MpGem(gx, midY + (Math.random() - 0.5) * 60));
+                }
+
                 // Rare power-ups, placed beside the node so they can be swung into
                 const roll = Math.random();
                 const type = roll < 0.07 ? 'double' : roll < 0.105 ? 'life' : null;
@@ -1954,6 +2239,7 @@
             spawnExplosion(player.x, player.y, '#ffaa00', 25);
             missionStat('bursts', 1);
             showToast(full ? '💥 MAX OVERCHARGE!' : '💥 OVERCHARGE BURST', 'text-orange-300');
+            if (!(full && mp >= MP_MAX)) pilotSay(full ? 'Max overcharge — punch it!' : 'Overcharge — go!', { key: 'burst', cooldown: 150 });
 
             // The sonic boom itself flattens small asteroids right around the orb
             asteroids.forEach(a => {
@@ -2005,7 +2291,7 @@
             sfx.playWarp();
             shockwaves.push(new Shockwave(player.x, player.y, '0,240,255', 220));
             spawnExplosion(player.x, player.y, '#bffbff', 30);
-            showBanner('WARP JUMP', 'x2 POINTS • HIGH-SPEED BONUS', 'text-cyan-300 neon-text-cyan');
+            showBanner('WARP JUMP', 'x2 POINTS • HIGH-SPEED BONUS', 'text-cyan-300 neon-text-cyan', 'Warp jump — hang on!');
             missionStat('warps', 1);
             updateHud();
         }
@@ -2027,7 +2313,7 @@
                     pulled++;
                 }
             });
-            showBanner('HYPER-DRIVE!', pulled ? `SHOCKWAVE • ${pulled} PULSES VACUUMED` : 'NEON SHOCKWAVE', 'text-fuchsia-300 neon-text-pink');
+            showBanner('HYPER-DRIVE!', pulled ? `SHOCKWAVE • ${pulled} PULSES VACUUMED` : 'NEON SHOCKWAVE', 'text-fuchsia-300 neon-text-pink', 'Hyper-Drive engaged!');
             missionStat('shockwaves', 1);
         }
 
@@ -2045,6 +2331,312 @@
             screenShake = 30;
             distortion = Math.max(distortion, 0.7);
             sfx.playShatter();
+        }
+
+        // --- PILOT COMMAND SYSTEM (callouts, MP gauge, Hyper-Nova cut-in) ---
+        function getActivePilot() {
+            return PILOTS.find(p => p.id === SHOP.pilots.active) || PILOTS[0];
+        }
+
+        function updatePilotUi() {
+            const p = getActivePilot();
+            ['hudPilotImg', 'menuPilotImg', 'bannerPilotImg'].forEach(id => { document.getElementById(id).src = p.portrait; });
+            document.getElementById('hudPilotImg').style.setProperty('--pilot', p.color);
+            document.getElementById('hudPilotName').innerText = p.name;
+            document.getElementById('menuPilotName').innerText = `${p.name} • ${p.title}`;
+            document.getElementById('menuPilotImg').style.borderColor = p.color;
+        }
+
+        // Pilot speaks: comms chirp + formant voice, text in the HUD (or on canvas in planet games).
+        // Cooldowns keep chatter brief so it never crowds the action.
+        let commsTimeout = null;
+        function pilotSay(text, { key = text, cooldown = 90, priority = 1, dom = true } = {}) {
+            if (pilotLast[key] !== undefined && frameCount - pilotLast[key] < cooldown) return;
+            if (priority < 2 && frameCount < pilotBusyUntil) return;
+            pilotLast[key] = frameCount;
+            pilotBusyUntil = frameCount + 50;
+            const p = getActivePilot();
+            if (frameCount - pilotVoiceFrame > 20) {
+                pilotVoiceFrame = frameCount;
+                sfx.playComms();
+                sfx.playVoice(text, p.voice);
+            }
+            if (gameState === 'MINIGAME') {
+                mgComms = { text, t: 0 };
+                return;
+            }
+            if (!dom) return;
+            const el = document.getElementById('pilotComms');
+            el.innerHTML = `<span style="color: ${p.color};">${p.name} ▸</span> <span class="text-white">${text}</span>`;
+            el.classList.remove('opacity-0');
+            clearTimeout(commsTimeout);
+            commsTimeout = setTimeout(() => el.classList.add('opacity-0'), 1800);
+        }
+
+        function flashPortrait(cls, ms = 350) {
+            const img = document.getElementById('hudPilotImg');
+            img.classList.add(cls);
+            setTimeout(() => img.classList.remove(cls), ms);
+        }
+
+        function addMp(amount) {
+            if (gameState !== 'PLAYING' || cutin || mp >= MP_MAX) return;
+            mp = Math.min(MP_MAX, mp + amount);
+            if (mp >= MP_MAX) {
+                sfx.playMpReady();
+                showBanner('MP READY!', 'TAP ✦ HYPER-NOVA • PRESS E • OR RELEASE A MAX OVERCHARGE', 'text-fuchsia-300 neon-text-pink', 'MP ready — say the word!');
+            }
+        }
+
+        function activateHyperNova() {
+            if (gameState !== 'PLAYING' || cutin || mp < MP_MAX) return;
+            mp = 0;
+            cutin = { t: 0, pilot: getActivePilot() };
+            // Invulnerable from the first frame of the cut-in until well after the blast
+            burstTimer = Math.max(burstTimer, 210);
+            burstFull = true;
+            invulnTimer = Math.max(invulnTimer, 210);
+            screenShake = Math.max(screenShake, 8);
+            sfx.playCutIn();
+            // The cut-in carries its own titles, so clear any banner underneath it
+            clearTimeout(bannerTimeout);
+            document.getElementById('banner').style.visibility = 'hidden';
+            const p = cutin.pilot;
+            setTimeout(() => { sfx.playComms(); sfx.playVoice('Hyper-Nova!', p.voice); }, 150);
+        }
+
+        // Hyper-Nova Sonic Burst: full-screen shockwave, smash on-screen asteroids, vacuum all pulses
+        function hyperNovaBlast() {
+            const p = cutin ? cutin.pilot : getActivePilot();
+            const reach = Math.max(width, height) * 0.8;
+            sfx.playHyperNova();
+            flashAlpha = 0.9;
+            flashColor = p.id === 'nova' ? '255,190,60' : '255,120,255';
+            screenShake = 28;
+            distortion = 1;
+            glitchTimer = Math.max(glitchTimer, 10);
+            shockwaves.push(new Shockwave(player.x, player.y, p.rgb[0], reach * 1.3, 14));
+            shockwaves.push(new Shockwave(player.x, player.y, p.rgb[1], reach, 9));
+            shockwaves.push(new Shockwave(player.x, player.y, '255,255,255', reach * 0.6, 6));
+            spawnExplosion(player.x, player.y, p.color, 40);
+            spawnExplosion(player.x, player.y, p.glow, 30);
+            asteroids.forEach(a => { if (Math.hypot(a.x - player.x, a.y - player.y) < reach) smashAsteroid(a); });
+            let pulled = 0;
+            pulses.forEach(pu => {
+                if (!pu.collected && pu.y > cameraY - 300 && pu.y < cameraY + height + 200) { pu.vacuum = true; pulled++; }
+            });
+            showToast(pulled ? `✦ SONIC BURST • ${pulled} PULSES VACUUMED` : '✦ SONIC BURST • SECTOR CLEARED', 'text-fuchsia-300');
+            missionStat('novas', 1);
+        }
+
+        function updateCutIn() {
+            if (!cutin) return;
+            cutin.t++;
+            if (cutin.t === CUTIN_BLAST_FRAME && gameState === 'PLAYING') hyperNovaBlast();
+            if (cutin.t >= CUTIN_FRAMES) cutin = null;
+        }
+
+        // Comic halftone dot tile, built once
+        let halftonePattern = null;
+        function getHalftone() {
+            if (!halftonePattern) {
+                const tile = document.createElement('canvas');
+                tile.width = tile.height = 7;
+                const t = tile.getContext('2d');
+                t.fillStyle = '#000';
+                t.beginPath();
+                t.arc(3.5, 3.5, 1.7, 0, Math.PI * 2);
+                t.fill();
+                halftonePattern = ctx.createPattern(tile, 'repeat');
+            }
+            return halftonePattern;
+        }
+
+        // Angular slanted title-font text with a gradient fill, black manga outline & neon bloom
+        function cutInText(text, x, y, maxW, size, colors, glow) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.transform(1, 0, -0.22, 1, 0, 0);
+            ctx.font = `900 ${size}px Orbitron, sans-serif`;
+            const w = ctx.measureText(text).width;
+            const fs = w > maxW ? Math.floor(size * maxW / w) : size;
+            ctx.font = `900 ${fs}px Orbitron, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = Math.max(4, fs * 0.16);
+            ctx.strokeStyle = '#05010d';
+            ctx.strokeText(text, 0, 0);
+            const g = ctx.createLinearGradient(-maxW / 2, 0, maxW / 2, 0);
+            colors.forEach((c, i) => g.addColorStop(i / (colors.length - 1), c));
+            ctx.fillStyle = g;
+            ctx.shadowColor = glow;
+            ctx.shadowBlur = 22;
+            ctx.fillText(text, 0, 0);
+            ctx.restore();
+        }
+
+        // Full-screen horizontal manga cut-in panel
+        function renderCutIn() {
+            if (!cutin) return;
+            const t = cutin.t, p = cutin.pilot, img = pilotArt[p.id].cutin;
+            const ease = k => 1 - Math.pow(1 - k, 3);
+            const inK = ease(Math.min(1, t / 10));
+            const outK = t > CUTIN_FRAMES - 12 ? ease((t - (CUTIN_FRAMES - 12)) / 12) : 0;
+            const slide = (1 - inK) * width * 1.3 - outK * width * 1.4;
+            const bandH = Math.min(height * 0.38, width * 0.62, 340);
+            const cy = height * 0.45;
+            const W = Math.hypot(width, height) * 1.2;
+
+            ctx.save();
+            // Dim & speed-line backdrop behind the panel
+            ctx.fillStyle = `rgba(3, 0, 12, ${0.55 * inK * (1 - outK)})`;
+            ctx.fillRect(0, 0, width, height);
+            ctx.globalCompositeOperation = 'lighter';
+            for (let i = 0; i < 22; i++) {
+                const y = Math.random() * height, len = 80 + Math.random() * width * 0.6;
+                const x = Math.random() * width;
+                ctx.strokeStyle = `rgba(${p.rgb[i % 2]}, ${0.35 * inK * (1 - outK)})`;
+                ctx.lineWidth = 1 + Math.random() * 2.5;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x - len, y + len * 0.12);
+                ctx.stroke();
+            }
+            ctx.globalCompositeOperation = 'source-over';
+
+            ctx.translate(width / 2 + slide, cy);
+            ctx.rotate(-0.12);
+
+            // Accent stripes racing the opposite way
+            const stripe = (t * 18) % 120;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-W / 2 - stripe, -bandH / 2 - 22, W, 6);
+            ctx.fillStyle = p.glow;
+            ctx.fillRect(-W / 2 + stripe, bandH / 2 + 16, W, 6);
+
+            // Black manga frame, white keyline and neon bloom
+            ctx.shadowColor = p.glow;
+            ctx.shadowBlur = 40;
+            ctx.fillStyle = '#05010d';
+            ctx.fillRect(-W / 2, -bandH / 2 - 10, W, bandH + 20);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-W / 2, -bandH / 2 - 4, W, bandH + 8);
+
+            ctx.beginPath();
+            ctx.rect(-W / 2, -bandH / 2, W, bandH);
+            ctx.clip();
+            const bg = ctx.createLinearGradient(-W / 2, 0, W / 2, 0);
+            bg.addColorStop(0, `rgba(${p.rgb[0]}, 1)`);
+            bg.addColorStop(1, `rgba(${p.rgb[1]}, 1)`);
+            ctx.fillStyle = bg;
+            ctx.fillRect(-W / 2, -bandH / 2, W, bandH);
+
+            // Pilot art: cover the visible band, slow push-in for drama
+            // Pilot art fits the band height (slow push-in for drama); on wide screens its edges
+            // melt into the panel gradient
+            if (img.complete && img.naturalWidth) {
+                const scale = bandH / img.naturalHeight * (1.06 + t * 0.0012);
+                const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+                const dx = -dw * p.focus - (t / CUTIN_FRAMES - 0.5) * 24;
+                ctx.drawImage(img, dx, -dh / 2, dw, dh);
+                if (dw < width * 1.05) {
+                    const fade = Math.min(120, dw * 0.15);
+                    [[dx, dx + fade, p.rgb[0]], [dx + dw, dx + dw - fade, p.rgb[1]]].forEach(([x0, x1, rgb]) => {
+                        const g = ctx.createLinearGradient(x0, 0, x1, 0);
+                        g.addColorStop(0, `rgba(${rgb}, 1)`);
+                        g.addColorStop(1, `rgba(${rgb}, 0)`);
+                        ctx.fillStyle = g;
+                        ctx.fillRect(Math.min(x0, x1) - 1, -dh / 2, fade + 2, dh);
+                    });
+                }
+            }
+
+            // Halftone texture fading in from the panel edges, plus white motion lines
+            ctx.globalAlpha = 0.28;
+            ctx.fillStyle = getHalftone();
+            ctx.fillRect(-W / 2, -bandH / 2, W, bandH * 0.22);
+            ctx.fillRect(-W / 2, bandH * 0.28, W, bandH * 0.22);
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'lighter';
+            for (let i = 0; i < 10; i++) {
+                const y = (Math.random() - 0.5) * bandH, len = 60 + Math.random() * 220;
+                const x = (Math.random() - 0.5) * width;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+                ctx.lineWidth = 1 + Math.random() * 2;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + len, y);
+                ctx.stroke();
+            }
+            // Bloom burst at the blast moment
+            if (t >= CUTIN_BLAST_FRAME - 2 && t < CUTIN_BLAST_FRAME + 10) {
+                const k = 1 - (t - CUTIN_BLAST_FRAME + 2) / 12;
+                ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * k})`;
+                ctx.fillRect(-W / 2, -bandH / 2, W, bandH);
+            }
+            ctx.restore();
+
+            // Overlay typography (screen space, kept level enough to read)
+            ctx.save();
+            ctx.globalAlpha = 1 - outK;
+            const textX = width / 2 + slide * 0.6;
+            const tagY = cy - bandH / 2 - 44;
+            ctx.textAlign = 'left';
+            ctx.font = '900 11px Orbitron, sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = p.glow;
+            ctx.shadowBlur = 10;
+            ctx.fillText(`${p.name} // ${p.title} — SPECIAL SKILL`, 16, Math.max(18, tagY));
+            if (t < CUTIN_BLAST_FRAME) {
+                const pop = 1 + Math.max(0, 6 - t) * 0.06;
+                cutInText('MP READY!', textX, cy - bandH / 2 + bandH * 0.18, width * 0.7 * pop, 34 * pop, ['#ffffff', p.glow], p.color);
+            } else {
+                const k = Math.min(1, (t - CUTIN_BLAST_FRAME) / 6);
+                const pop = 1.35 - 0.35 * k;
+                cutInText('HYPER-NOVA', textX, cy + bandH / 2 + 4, width * 0.88 * pop, 52 * pop, ['#00f0ff', '#ff00aa', '#a855f7'], p.color);
+                cutInText('ACTIVATED!', textX + 30, cy + bandH / 2 + 48, width * 0.6 * pop, 30 * pop, ['#ffffff', '#fde047'], p.glow);
+            }
+            ctx.restore();
+        }
+
+        // Pilot signature flourishes on top of the equipped trail
+        function pilotFlourish(event, x, y) {
+            const p = getActivePilot();
+            if (p.id === 'lyra' && event === 'sling') {
+                for (let i = 0; i < 14; i++) {
+                    const pt = new Particle(x, y, ['#c084fc', '#00f0ff', '#ffffff'][i % 3]);
+                    pt.size = 1 + Math.random() * 2;
+                    pt.decay *= 0.7;
+                    particles.push(pt);
+                }
+            } else if (p.id === 'nova' && event === 'skim') {
+                for (let i = 0; i < 18; i++) particles.push(new Particle(x, y, i % 2 ? '#ff7a00' : '#ffd23f'));
+                shockwaves.push(new Shockwave(x, y, '255,170,0', 70, 4));
+            }
+        }
+
+        // Circular pilot portrait with a neon ring, used on the planet-game playfield
+        function drawPilotBadge(x, y, r, ring) {
+            const p = getActivePilot(), img = pilotArt[p.id].portrait;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fillStyle = '#0b0620';
+            ctx.fill();
+            if (img.complete && img.naturalWidth) {
+                ctx.save();
+                ctx.clip();
+                ctx.drawImage(img, x - r * 1.15, y - r * 1.05, r * 2.3, r * 2.3);
+                ctx.restore();
+            }
+            ctx.strokeStyle = ring || p.color;
+            ctx.shadowColor = ring || p.color;
+            ctx.shadowBlur = 12;
+            ctx.lineWidth = Math.max(1.5, r * 0.12);
+            ctx.stroke();
+            ctx.restore();
         }
 
         // --- INPUT CONTROLLER ---
@@ -2100,6 +2692,17 @@
                 else if (gameState === 'MENU') startGame();
             }
         });
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName !== 'INPUT' && e.code === 'KeyE') activateHyperNova();
+        });
+        // The button sits over the canvas: stop its press from also anchoring the orb
+        const novaBtn = document.getElementById('novaBtn');
+        ['mousedown', 'touchstart'].forEach(type => novaBtn.addEventListener(type, (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            sfx.init();
+            activateHyperNova();
+        }, { passive: false }));
         window.addEventListener('keyup', (e) => {
             mgKeys[e.code] = false;
             if (e.code === 'Space') isHolding = false;
@@ -2128,6 +2731,11 @@
             lastSkimFrame = -999;
             distortion = 0;
             flashAlpha = 0;
+            mp = 0;
+            cutin = null;
+            pilotLast = {};
+            pilotBusyUntil = 0;
+            mgComms = null;
             ensureMissions();
             runStats = {};
 
@@ -2140,6 +2748,7 @@
             nodes = [new OrbitalNode(width / 2, height / 2 - 100)];
             asteroids = [];
             pulses = [];
+            mpGems = [];
             powerUps = [];
             particles = [];
             gates = [];
@@ -2166,6 +2775,7 @@
             document.getElementById('hudHyper').classList.add('opacity-0');
             document.getElementById('reviveAdBtn').classList.remove('hidden');
             updateHud();
+            setTimeout(() => { if (gameState === 'PLAYING') pilotSay("Systems green. Let's fly!", { priority: 2 }); }, 400);
         }
 
         function updateHud() {
@@ -2175,12 +2785,21 @@
         }
 
         let bannerTimeout = null;
-        function showBanner(title, sub, colorClass) {
+        // `line` is the pilot's callout, shown under the banner and voiced
+        function showBanner(title, sub, colorClass, line) {
             const banner = document.getElementById('banner');
             const t = document.getElementById('bannerTitle');
             t.innerText = title;
             t.className = `font-orbitron text-4xl md:text-6xl font-black ${colorClass}`;
             document.getElementById('bannerSub').innerText = sub;
+            banner.style.visibility = '';
+            const pilotRow = document.getElementById('bannerPilot');
+            pilotRow.classList.toggle('hidden', !line);
+            if (line) {
+                const p = getActivePilot();
+                document.getElementById('bannerPilotText').innerHTML = `<span style="color: ${p.color};">${p.name} ▸</span> ${line}`;
+                pilotSay(line, { priority: 2, dom: false });
+            }
             banner.classList.remove('opacity-0');
             banner.style.transform = 'scale(1)';
             clearTimeout(bannerTimeout);
@@ -2217,7 +2836,8 @@
             screenShake = 14;
             spawnExplosion(player.x, player.y, '#ff2d7a', 25);
             respawnPlayer();
-            showBanner('LIFE LOST', `${lives} ♥ REMAINING`, 'text-pink-400 neon-text-pink');
+            showBanner('LIFE LOST', `${lives} ♥ REMAINING`, 'text-pink-400 neon-text-pink', lives > 1 ? 'Hull hit — shields holding!' : 'Last shield — careful!');
+            flashPortrait('pilot-hit', 500);
             updateHud();
             return true;
         }
@@ -2226,6 +2846,8 @@
             if (tryUseLife()) return;
             gameState = 'GAMEOVER';
             lives = 0;
+            cutin = null;
+            novaBtn.classList.add('hidden');
             updateHud();
             sfx.playExplosion();
             screenShake = 20;
@@ -2295,12 +2917,16 @@
             burstTimer = 0;
             document.getElementById('hud').classList.add('opacity-0');
             document.getElementById('hudLives').classList.add('opacity-0');
+            novaBtn.classList.add('hidden');
+            cutin = null;
+            setTimeout(() => { if (mg && mg.phase === 'intro') pilotSay(mg.game.brief, { priority: 2 }); }, 500);
         }
 
         function endMinigame(won) {
             mg.phase = won ? 'won' : 'lost';
             mg.t = 0;
             mg.enemyBullets = [];
+            pilotSay(won ? 'Planet cleared! Breaching the wall!' : 'Signal lost… pulling out!', { priority: 2 });
             if (won) {
                 sfx.playLevelUp();
                 mgBurst(mg.ship.x, mg.ship.y, tintRgba(mg.tint, 1), 50);
@@ -2334,6 +2960,7 @@
                 invulnTimer = 120;
                 spawnExplosion(gate.x, gate.y, tintRgba(gate.tint, 1), 50);
                 shatterWall(gate);
+                showBanner('WALL BREACHED', `+${gateBonus} PLANET BONUS`, 'text-yellow-300 neon-text-cyan', 'Gravity wall breached! Go, go!');
                 missionStat('planets', 1);
                 missionStat('score', Math.floor(score), true);
             } else {
@@ -2393,7 +3020,9 @@
             screenShake = 14;
             sfx.playLifeLost();
             mgBurst(mg.ship.x, mg.ship.y, '#ff2d7a', 25);
+            mg.hitFlash = 30;
             if (mg.shields <= 0) endMinigame(false);
+            else pilotSay(mg.shields === 1 ? 'Last shield — careful!' : `Shields at ${mg.shields} — holding!`, { priority: 2 });
         }
 
         function mgProgress() {
@@ -2707,6 +3336,8 @@
                 }
             } else if (mg.phase === 'play') {
                 mg.time--;
+                if (mg.time === MINIGAME_FRAMES / 2) pilotSay('Halfway there — keep it up!', { priority: 2 });
+                else if (mg.time === 300) pilotSay('Five seconds — hold on!', { priority: 2 });
                 if (mg.type === 'strike') updateStrike();
                 else if (mg.type === 'breaker') updateBreaker();
                 else updateInvaders();
@@ -2717,6 +3348,8 @@
                 return;
             }
             mg.tapped = false;
+            if (mg.hitFlash > 0) mg.hitFlash--;
+            if (mgComms && ++mgComms.t > 130) mgComms = null;
 
             for (let i = mg.particles.length - 1; i >= 0; i--) {
                 mg.particles[i].update();
@@ -2751,14 +3384,9 @@
             ctx.fill();
             ctx.stroke();
 
-            const g = ctx.createRadialGradient(0, 1, 1, 0, 1, 7);
-            g.addColorStop(0, skin.secondary);
-            g.addColorStop(1, skin.color);
-            ctx.fillStyle = g;
-            ctx.beginPath();
-            ctx.arc(0, 1, 6, 0, Math.PI * 2);
-            ctx.fill();
             ctx.restore();
+            // Pilot in the cockpit canopy
+            drawPilotBadge(x, y + 3, 8.5, skin.secondary);
         }
 
         function drawDrone(x, y, r, color) {
@@ -2848,6 +3476,7 @@
             ctx.fillStyle = skin.secondary;
             ctx.fillRect(mg.ship.x - p.w / 2 + 10, p.y - 2, p.w - 20, 3);
             ctx.restore();
+            if (mg.phase !== 'lost') drawPilotBadge(mg.ship.x, p.y, 12, skin.secondary);
 
             // Ball: the player's orb with its trail
             const b = mg.ball;
@@ -2887,21 +3516,42 @@
             ctx.shadowBlur = 12;
             ctx.fillText((Math.max(0, mg.time) / 60).toFixed(1), 16, 32);
 
+            // Pilot status: portrait (flashes red when hit) beside her shields
+            const pilot = getActivePilot();
+            ctx.shadowBlur = 0;
+            drawPilotBadge(width - 34, 34, 18, mg.hitFlash > 0 && mg.hitFlash % 8 < 4 ? '#ff2d2d' : pilot.color);
+            ctx.shadowBlur = 12;
             ctx.textAlign = 'right';
-            ctx.font = '22px sans-serif';
+            ctx.font = '700 9px Orbitron, sans-serif';
+            ctx.fillStyle = tintRgba(c, 0.95);
+            ctx.fillText(`${pilot.name} SHIELDS`, width - 60, 12);
+            ctx.font = '20px sans-serif';
             ctx.fillStyle = '#ff2d7a';
             ctx.shadowColor = '#ff2d7a';
-            ctx.fillText('♥'.repeat(Math.max(0, mg.shields)) + '♡'.repeat(MG_SHIELDS - Math.max(0, mg.shields)), width - 16, 14);
-            ctx.font = '700 14px Orbitron, sans-serif';
+            ctx.fillText('♥'.repeat(Math.max(0, mg.shields)) + '♡'.repeat(MG_SHIELDS - Math.max(0, mg.shields)), width - 60, 24);
+            ctx.font = '700 13px Orbitron, sans-serif';
             ctx.fillStyle = '#ffea00';
             ctx.shadowColor = '#ffea00';
-            ctx.fillText(`◆ ${gems}`, width - 16, 46);
+            ctx.fillText(`◆ ${gems}`, width - 60, 50);
 
             ctx.shadowBlur = 0;
             ctx.fillStyle = 'rgba(30, 41, 59, 0.8)';
             ctx.fillRect(16, 70, width - 32, 4);
             ctx.fillStyle = tintRgba(c, 1);
             ctx.fillRect(16, 70, (width - 32) * (mg.time / MINIGAME_FRAMES), 4);
+
+            // Pilot comms line under the timer bar
+            if (mgComms && mg.phase === 'play') {
+                ctx.globalAlpha = Math.min(1, (130 - mgComms.t) / 20);
+                drawPilotBadge(30, 96, 12);
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = pilot.color;
+                ctx.shadowColor = pilot.color;
+                ctx.shadowBlur = 8;
+                fillFitText(`${pilot.name} ▸ ${mgComms.text}`, 48, 97, width - 64, 12, 700);
+                ctx.globalAlpha = 1;
+            }
             ctx.restore();
         }
 
@@ -2929,6 +3579,19 @@
                 ctx.shadowBlur = 0;
                 ctx.fillStyle = 'rgba(3, 3, 8, 0.45)';
                 ctx.fillRect(0, 0, width, height);
+
+                // Pilot anchor: portrait slides down above the title with her briefing below
+                const pilot = getActivePilot();
+                const pr = Math.min(52, (cy - 44 - 92) / 2);
+                if (pr >= 20) {
+                    const drop = (1 - Math.min(1, mg.t / 20)) * -40;
+                    drawPilotBadge(width / 2, cy - 64 - pr + drop, pr, tintRgba(c, 1));
+                }
+                ctx.fillStyle = pilot.color;
+                ctx.shadowColor = pilot.color;
+                ctx.shadowBlur = 10;
+                fillFitText(`${pilot.name} ▸ ${mg.game.brief}`, width / 2, cy + 86, width - 40, 13, 700);
+                ctx.shadowBlur = 0;
 
                 ctx.fillStyle = tintRgba(c, 1);
                 fillFitText('ENTERING PLANET', width / 2, cy - 44, width - 40, 12, 700);
@@ -2962,6 +3625,10 @@
                 ctx.shadowBlur = 0;
                 ctx.fillStyle = won ? '#fde047' : '#f472b6';
                 fillFitText(won ? 'GRAVITY WALL DOWN • NEXT LEVEL UNLOCKED' : 'THE PLANET REPELLED YOU • -1 ♥', width / 2, cy + 42, width - 40, 13, 700);
+                const pilot = getActivePilot();
+                drawPilotBadge(width / 2, cy - 78, 28, won ? tintRgba(c, 1) : '#ff0055');
+                ctx.fillStyle = pilot.color;
+                fillFitText(`${pilot.name} ▸ ${won ? 'Planet cleared! Breaching the wall!' : 'Signal lost… pulling out!'}`, width / 2, cy + 70, width - 40, 12, 700);
             }
             ctx.restore();
         }
@@ -3199,6 +3866,21 @@
             const hyperEl = document.getElementById('hudHyper');
             hyperEl.classList.toggle('opacity-0', !streakShown);
             document.getElementById('hudStreak').innerText = hyperTimer > 0 ? 'ENGAGED' : '●'.repeat(skimStreak) + '○'.repeat(Math.max(0, 3 - skimStreak));
+            updatePilotGauges();
+        }
+
+        const pilotHud = {};
+        function updatePilotGauges() {
+            if (!pilotHud.mpBar) ['hudMpBar', 'hudMpTxt', 'hudEnergyBar', 'hudEnergyTxt', 'hudPilotImg'].forEach(id => { pilotHud[id.replace('hud', '').replace(/^./, c => c.toLowerCase())] = document.getElementById(id); });
+            const energy = burstTimer > 0 ? 1 : player.anchoredNode ? player.charge : 0;
+            pilotHud.energyBar.style.width = `${energy * 100}%`;
+            pilotHud.energyTxt.innerText = cutin ? 'NOVA' : burstTimer > 0 ? 'BURST' : player.charge >= 1 ? 'MAX' : player.charge >= CHARGE_MIN ? 'READY' : '';
+            pilotHud.mpBar.style.width = `${mp}%`;
+            pilotHud.mpTxt.innerText = mp >= MP_MAX ? 'READY!' : `${Math.floor(mp)}%`;
+            const ready = mp >= MP_MAX && !cutin && gameState === 'PLAYING';
+            pilotHud.mpBar.classList.toggle('mp-full', ready);
+            pilotHud.pilotImg.classList.toggle('pilot-ready', ready);
+            novaBtn.classList.toggle('hidden', !ready);
         }
 
         function gameLoop(now) {
@@ -3247,7 +3929,7 @@
                         level = newLevel;
                         createGate(level);
                         sfx.playLevelUp();
-                        showBanner(`LEVEL ${level}`, gateBonus ? `PLANET BONUS +${gateBonus} • x${level} POINTS` : `FASTER • MORE ASTEROIDS • x${level} POINTS`, 'text-white neon-text-cyan');
+                        showBanner(`LEVEL ${level}`, gateBonus ? `PLANET BONUS +${gateBonus} • x${level} POINTS` : `FASTER • MORE ASTEROIDS • x${level} POINTS`, 'text-white neon-text-cyan', `Sector ${level}. Stay sharp!`);
                         gateBonus = 0;
                         spawnExplosion(player.x, player.y, '#aa00ff', 30);
                         if (!runStats.lifeLost) missionStat('cleanLevel', level, true);
@@ -3303,6 +3985,7 @@
                             player.vy = Math.max(Math.abs(player.vy), cfg.minSpeed);
                             sfx.playCloseCall();
                             spawnExplosion(player.x, gate.barrierY, tintRgba(gate.tint, 1), 8);
+                            pilotSay("Gravity wall's up — dive into the planet!", { key: 'wall', cooldown: 420 });
                         }
                         if (gate.cooldown <= 0 && Math.hypot(player.x - gate.x, player.y - gate.y) < player.radius + gate.radius) {
                             startMinigame(gate);
@@ -3334,7 +4017,10 @@
                                 triggerGameOver();
                                 break;
                             }
-                            if (d < bh.pull * 0.6) bh.captured = true;
+                            if (d < bh.pull * 0.6) {
+                                if (!bh.captured) pilotSay('Gravity well — break free!', { key: 'bh', cooldown: 360 });
+                                bh.captured = true;
+                            }
                             else if (bh.captured && d > bh.pull) {
                                 bh.captured = false;
                                 const pts = 50 * pointsMult();
@@ -3342,6 +4028,7 @@
                                 sfx.playEscape();
                                 floaters.push(new Floater(player.x, player.y - 24, `ESCAPED +${pts}`, '#c46bff'));
                                 missionStat('escapes', 1);
+                                pilotSay('We broke free!', { key: 'escape', cooldown: 240, priority: 2 });
                             }
                         }
                     }
@@ -3392,6 +4079,13 @@
                         hudCombo.classList.remove('opacity-0');
                         missionStat('skims', 1);
                         missionStat('combo', combo, true);
+                        pilotFlourish('skim', a.x, a.y);
+                        addMp(MP_PER_SKIM);
+                        if (combo === 3 || combo === 5 || combo === 8 || combo === 12) {
+                            pilotSay({ 3: 'Combo x3!', 5: 'x5 — unstoppable!', 8: 'x8! Incredible!', 12: 'x12?! Legendary!' }[combo], { key: 'combo' + combo, cooldown: 0, priority: 2 });
+                        } else {
+                            pilotSay(['Tight gap!', 'Nice skim!', 'Threaded it!', 'Close one!'][Math.floor(Math.random() * 4)], { key: 'skim', cooldown: 200, priority: 0 });
+                        }
 
                         // Rapid skims build a hyper-drive streak
                         skimStreak = frameCount - lastSkimFrame <= SKIM_STREAK_WINDOW ? skimStreak + 1 : 1;
@@ -3439,6 +4133,19 @@
                     }
                 });
 
+                // MP crystals charge the pilot's special skill
+                mpGems.forEach(g => {
+                    g.render(ctx, cameraY);
+                    if (gameState === 'PLAYING' && !g.collected && Math.hypot(player.x - g.x, player.y - g.y) < player.radius + g.radius + 12) {
+                        g.collected = true;
+                        sfx.playMpReady();
+                        spawnExplosion(g.x, g.y, '#ff4dff', 16);
+                        floaters.push(new Floater(g.x, g.y - 18, `+${MP_PER_GEM} MP`, '#ff7dff'));
+                        addMp(MP_PER_GEM);
+                        if (mp < MP_MAX) pilotSay(['MP crystal secured!', 'Charging up!', 'More power!'][Math.floor(Math.random() * 3)], { key: 'mpgem', cooldown: 240, priority: 0 });
+                    }
+                });
+
                 // Update & Render Power-ups
                 powerUps.forEach(pu => {
                     pu.render(ctx, cameraY);
@@ -3452,13 +4159,13 @@
                             if (pu.type === 'double') {
                                 doubleTimer = DOUBLE_DURATION;
                                 document.getElementById('hudDouble').classList.remove('hidden');
-                                showBanner('2X POINTS!', 'DOUBLE SCORE FOR 8 SECONDS', 'text-yellow-300 neon-text-pink');
+                                showBanner('2X POINTS!', 'DOUBLE SCORE FOR 8 SECONDS', 'text-yellow-300 neon-text-pink', 'Double points — make it count!');
                             } else if (lives < MAX_LIVES) {
                                 lives++;
-                                showBanner('+1 LIFE', `${lives} ♥`, 'text-pink-400 neon-text-pink');
+                                showBanner('+1 LIFE', `${lives} ♥`, 'text-pink-400 neon-text-pink', 'Shields restored!');
                             } else {
                                 score += 250 * level;
-                                showBanner('LIVES FULL', `+${250 * level} BONUS POINTS`, 'text-pink-400 neon-text-pink');
+                                showBanner('LIVES FULL', `+${250 * level} BONUS POINTS`, 'text-pink-400 neon-text-pink', 'Shields maxed — bonus banked!');
                             }
                             updateHud();
                         }
@@ -3497,6 +4204,7 @@
                 asteroids = asteroids.filter(a => !a.dead && a.y - cameraY < height + 300);
                 pulses = pulses.filter(p => !(p.collected && p.vacuum) && p.y - cameraY < height + 300);
                 powerUps = powerUps.filter(p => !p.collected && p.y - cameraY < height + 300);
+                mpGems = mpGems.filter(g => !g.collected && g.y - cameraY < height + 300);
                 gates = gates.filter(g => !g.cleared || g.y - cameraY < height + 300);
                 blackHoles = blackHoles.filter(b => b.y - cameraY < height + 400);
                 wormholes = wormholes.filter(w => !w.used && w.y - cameraY < height + 300);
@@ -3508,15 +4216,19 @@
             }
 
             ctx.restore();
+            if (gameState === 'PLAYING') updateCutIn();
+            else cutin = null;
+            renderCutIn();
             applyPostFX();
             requestAnimationFrame(gameLoop);
         }
 
         // --- SHOP & UI INTERACTIVITY LOGIC ---
 
-        let shopTab = 'skins';
+        let shopTab = 'pilots';
 
         function shopSwatch(tab, item) {
+            if (tab === 'pilots') return `<img src="${item.portrait}" alt="${item.name}" class="pilot-portrait w-14 h-14 object-cover shrink-0" style="--pilot: ${item.color};">`;
             if (tab === 'skins') return `<div class="w-8 h-8 rounded-full shadow-lg" style="background: ${item.color};"></div>`;
             const color = getActiveSkin().color;
             return `<div class="w-8 h-8 rounded-full flex items-center justify-center text-base bg-slate-900 border" style="border-color: ${color}; color: ${color};">${item.icon}</div>`;
@@ -3543,7 +4255,7 @@
                     <div class="flex items-center space-x-3 min-w-0">
                         ${shopSwatch(shopTab, s)}
                         <div class="min-w-0">
-                            <div class="font-orbitron font-bold text-sm text-white">${s.name}</div>
+                            <div class="font-orbitron font-bold text-sm text-white">${s.name}${s.title ? ` <span class="text-[10px]" style="color: ${s.color};">• ${s.title}</span>` : ''}</div>
                             ${s.desc ? `<div class="text-xs text-slate-300">${s.desc}</div>` : ''}
                             <div class="text-xs text-slate-400">${isOwned ? (isActive ? 'EQUIPPED' : 'OWNED') : `COST: ${s.cost} PULSES`}</div>
                         </div>
@@ -3563,6 +4275,7 @@
         function applyEquipped(tab) {
             if (tab === 'sounds') sfx.pack = SHOP.sounds.active;
             if (tab === 'trails') player.petals = [];
+            if (tab === 'pilots') updatePilotUi();
         }
 
         // Play a short demo through a pack without equipping it
@@ -3625,6 +4338,7 @@
             { id: 'planets', stat: 'planets', scope: 'day', targets: [1, 2, 4], text: n => `Clear ${n} Planet Gate challenge${n > 1 ? 's' : ''}` },
             { id: 'escapes', stat: 'escapes', scope: 'day', targets: [1, 3, 5], text: n => `Escape a black hole's pull ${n} time${n > 1 ? 's' : ''}` },
             { id: 'shock', stat: 'shockwaves', scope: 'run', targets: [1, 2, 3], text: n => `Trigger ${n} Hyper-Drive shockwave${n > 1 ? 's' : ''} in a single run` },
+            { id: 'nova', stat: 'novas', scope: 'day', targets: [1, 2, 4], text: n => `Unleash ${n} Hyper-Nova special${n > 1 ? 's' : ''}` },
             { id: 'score', stat: 'score', scope: 'run', targets: [3000, 8000, 16000], text: n => `Score ${n.toLocaleString()} points in a single run` }
         ];
         const MISSION_REWARDS = [40, 75, 130];
@@ -3792,6 +4506,7 @@
             document.getElementById('hudDouble').classList.add('hidden');
             document.getElementById('hudWarp').classList.add('hidden');
             document.getElementById('hudHyper').classList.add('opacity-0');
+            novaBtn.classList.add('hidden');
             document.getElementById('mainMenu').classList.remove('opacity-0', 'pointer-events-none');
             updateMissionBadge();
             document.getElementById('menuBestScore').innerText = bestScore;
@@ -3955,6 +4670,7 @@
 
         // Initial menu score load
         document.getElementById('menuBestScore').innerText = bestScore;
+        updatePilotUi();
 
         // Start Animation Frame Loop
         requestAnimationFrame(gameLoop);
