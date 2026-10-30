@@ -128,6 +128,45 @@
             background: #00f0ff;
             border-radius: 3px;
         }
+
+        #sectorScene { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(3,8,22,.92); color: #effaff; }
+        #sectorScene[hidden] { display: none; }
+        .sector-frame { position: relative; width: min(900px, 94vw); height: min(600px, 88dvh); overflow: hidden; border-block: 1px solid #72edf3; background: radial-gradient(ellipse at 30% 45%, #302450, #091321 75%); }
+        .sector-orbit { position: absolute; width: 65%; aspect-ratio: 1; border: 1px solid #72edf355; border-radius: 50%; left: -5%; top: 5%; transform: rotateX(35deg); }
+        .sector-orbit::after { content: ''; position: absolute; inset: 12%; border: 1px dashed #b18af077; border-radius: 50%; animation: orbitArrival 16s linear infinite; }
+        #sectorArt { position: absolute; height: 96%; width: 53%; object-fit: contain; object-position: bottom; bottom: 0; left: 0; animation: pilotArrival 3.8s ease-out both; }
+        .sector-copy { position: absolute; left: 51%; right: 5%; top: 28%; animation: commArrival .7s .2s both; }
+        .sector-label { font: 700 10px Orbitron, sans-serif; letter-spacing: .22em; color: #72edf3; }
+        #sectorCarry { margin-top: 14px; color: #ff9fe0; }
+        #sectorTitle { font: 900 clamp(25px, 5vw, 54px) Orbitron, sans-serif; line-height: 1.15; margin: 18px 0; }
+        #sectorLine { font-size: clamp(17px, 2.6vw, 23px); color: #d7c7f2; }
+        #sectorSkip { position: absolute; right: 5%; bottom: 7%; padding: 12px 18px; border: 1px solid #72edf377; background: #111d32; color: #c4faff; font: 700 11px Orbitron, sans-serif; cursor: pointer; }
+        #sectorSkip:hover, #sectorSkip:focus-visible { background: #263450; outline: 2px solid #72edf3; }
+        @keyframes pilotArrival { from { opacity: 0; transform: translateX(-70px) scale(.94); } 25% { opacity: 1; } to { opacity: 1; transform: translateX(0) scale(1.02); } }
+        @keyframes commArrival { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes orbitArrival { to { transform: rotate(360deg); } }
+        @media (max-width: 540px) { #sectorArt { width: 58%; height: 88%; left: -3%; } .sector-copy { left: 51%; right: 4%; top: 17%; } }
+        @media (prefers-reduced-motion: reduce) { #sectorScene * { animation: none !important; } }
+
+        #pilotCheer { position: fixed; top: 174px; right: 12px; z-index: 15; display: flex; align-items: flex-start; pointer-events: none; width: min(260px, 64vw); opacity: 0; transform: translateX(20px); transition: opacity .2s, transform .3s; }
+        #pilotCheer.cheering { opacity: 1; transform: translateX(0); }
+        #pilotCheer > img { height: 168px; width: 90px; object-fit: contain; object-position: top; filter: drop-shadow(0 4px 8px #080a22); }
+        #pilotCheer.cheering > img { animation: cheerBounce .55s ease-out, lyraSway 2.4s .55s ease-in-out infinite alternate; transform-origin: 50% 90%; }
+        #pilotCheer[data-mood="charged"] { width: min(330px, 80vw); }
+        #pilotCheer[data-mood="charged"] > img { height: 230px; width: 110px; }
+        #pilotCheer[data-mood="charged"].cheering > img { animation: lyraPower .7s ease-out, lyraSway 2s .7s ease-in-out infinite alternate; }
+        #pilotCheer .lyra-expression { width: 48px; height: 58px; object-fit: cover; float: right; margin: 0 0 6px 8px; border-radius: 7px; border: 1px solid #c65af5; }
+        .sector-expression { position: absolute; right: 5%; top: 5%; width: 64px; height: 82px; object-fit: cover; border: 1px solid #c65af5; border-radius: 8px; }
+        #sectorArt.pose-reveal { animation: lyraPoseReveal .65s ease-out both, lyraSway 3s .65s ease-in-out infinite alternate; transform-origin: 50% 90%; }
+        @keyframes lyraPoseReveal { from { opacity: 0; transform: translateX(-32px) rotate(-3deg); } to { opacity: 1; transform: translateX(0) rotate(0); } }
+        @keyframes lyraSway { from { transform: translateY(0) rotate(-1deg); } to { transform: translateY(-5px) rotate(1deg); } }
+        @keyframes lyraPower { 0% { opacity: 0; transform: translateX(55px) rotate(7deg); } 65% { opacity: 1; transform: translateX(-5px) rotate(-3deg); } 100% { transform: translateX(0) rotate(0); } }
+        .cheer-bubble { flex: 1; margin-top: 15px; padding: 12px; background: #11182eef; border: 1px solid #a990d0; border-left: 3px solid #79e7ee; clip-path: polygon(0 0, 94% 0, 100% 10%, 100% 100%, 10% 100%, 0 88%); }
+        #cheerTag { display: block; color: #81e8ee; font: 900 10px Orbitron, sans-serif; letter-spacing: .08em; margin-bottom: 6px; }
+        #cheerLine { color: #eee6ff; font-size: 17px; line-height: 1.1; }
+        @keyframes cheerBounce { 0% { transform: translateY(12px) rotate(-5deg); } 55% { transform: translateY(-8px) rotate(3deg); } 100% { transform: translateY(0) rotate(0); } }
+        @media (max-height: 550px) { #pilotCheer { top: 115px; } #pilotCheer > img, #pilotCheer[data-mood="charged"] > img { height: 115px; width: 66px; } }
+        @media (prefers-reduced-motion: reduce) { #pilotCheer, #pilotCheer img { animation: none !important; transition: none; } }
     </style>
 </head>
 <body class="w-screen relative flex items-center justify-center overflow-hidden">
@@ -167,7 +206,7 @@
             <!-- Pilot command card: portrait, shields, energy, multiplier & MP -->
             <div id="pilotCard" class="glass-panel rounded-xl p-2 flex items-center space-x-2 w-48">
                 <div class="relative shrink-0">
-                    <img id="hudPilotImg" src="assets/pilots/lyra-portrait.webp" alt="Pilot" class="pilot-portrait w-14 h-14 object-cover">
+                    <img id="hudPilotImg" src="assets/pilots/lyra-portrait.png" alt="Pilot" class="pilot-portrait w-14 h-14 object-cover">
                     <div id="hudPilotName" class="absolute -bottom-1.5 left-0 right-0 text-center font-orbitron text-[8px] font-black tracking-widest text-white bg-slate-950/90 rounded">LYRA</div>
                 </div>
                 <div class="flex-1 min-w-0 space-y-1">
@@ -191,6 +230,11 @@
         </div>
     </div>
 
+    <div id="pilotCheer" aria-live="polite" aria-atomic="true" aria-hidden="true">
+        <div class="cheer-bubble"><img class="lyra-expression" src="assets/pilots/lyra-wink.png" alt=""><span id="cheerTag"></span><span id="cheerLine"></span></div>
+        <img src="assets/pilots/lyra-fullbody.png" alt="Lyra in her black-and-white pilot uniform with violet hair and a magenta-trimmed jacket">
+    </div>
+
     <!-- Hyper-Nova special skill button (appears when MP is full) -->
     <button id="novaBtn" class="hidden absolute right-4 md:right-6 bottom-24 z-20 font-orbitron font-black text-sm tracking-widest text-white bg-gradient-to-r from-fuchsia-600 to-cyan-500 px-6 py-3">
         ✦ HYPER-NOVA
@@ -202,9 +246,18 @@
         <div id="bannerSub" class="font-orbitron text-sm md:text-base font-bold text-yellow-300 mt-2 tracking-widest"></div>
         <div id="bannerPilot" class="hidden mt-3">
             <div class="inline-flex items-center space-x-2 bg-slate-950/70 border border-fuchsia-400/40 rounded-full pl-1 pr-4 py-1">
-                <img id="bannerPilotImg" src="assets/pilots/lyra-portrait.webp" alt="" class="w-7 h-7 rounded-full object-cover">
+                <img id="bannerPilotImg" src="assets/pilots/lyra-portrait.png" alt="" class="w-7 h-7 rounded-full object-cover">
                 <span id="bannerPilotText" class="font-orbitron text-xs md:text-sm font-bold text-white"></span>
             </div>
+        </div>
+    </div>
+
+    <div id="sectorScene" hidden role="dialog" aria-modal="true" aria-labelledby="sectorTitle" aria-describedby="sectorLine">
+        <div class="sector-frame"><div class="sector-orbit" aria-hidden="true"></div>
+            <img id="sectorArt" src="assets/pilots/lyra-fullbody.png" alt="Full-body Lyra with a violet ponytail, pilot headset, black-and-white uniform, and combat boots">
+            <img id="sectorExpression" class="sector-expression" src="assets/pilots/lyra-smile.png" alt="">
+            <div class="sector-copy"><div class="sector-label">ORBIT &amp; ECHO // COMMS</div><h2 id="sectorTitle">SECTOR 02</h2><div class="sector-label">LYRA / ASTRA SCOUT</div><p id="sectorLine"></p><div id="sectorCarry" class="sector-label"></div></div>
+            <button id="sectorSkip" type="button">CONTINUE / SKIP</button>
         </div>
     </div>
 
@@ -234,7 +287,7 @@
 
             <!-- Active pilot -->
             <div class="flex items-center space-x-3 glass-panel rounded-full pl-1.5 pr-5 py-1.5 mb-5">
-                <img id="menuPilotImg" src="assets/pilots/lyra-portrait.webp" alt="Pilot" class="w-11 h-11 rounded-full object-cover border-2 border-fuchsia-400">
+                <img id="menuPilotImg" src="assets/pilots/lyra-portrait.png" alt="Pilot" class="w-11 h-11 rounded-full object-cover border-2 border-fuchsia-400">
                 <div class="text-left">
                     <div class="text-[10px] font-orbitron text-slate-400 tracking-widest">PILOT</div>
                     <div id="menuPilotName" class="font-orbitron text-sm font-black text-white">LYRA • ASTRA SCOUT</div>
@@ -416,7 +469,7 @@
                     <div class="bg-fuchsia-500/20 p-2 rounded-lg text-fuchsia-300 text-lg font-bold font-orbitron">09</div>
                     <div>
                         <strong class="text-white block font-orbitron">PILOTS & HYPER-NOVA</strong>
-                        Your pilot (Lyra by default) calls out the action from the top-right HUD. Fill her <b class="text-fuchsia-300">MP</b> gauge by grabbing glowing violet MP crystals and skimming asteroids. At 100% tap <b class="text-fuchsia-300">✦ HYPER-NOVA</b> (or press E) — or just release a max overcharge — to unleash a full-screen sonic burst that smashes asteroids, vacuums every Light Pulse and makes you briefly invulnerable. Unlock Nova, the Solar Ace, in the Shop Matrix.
+                        Your pilot (Lyra by default) calls out the action from the top-right HUD. Fill her <b class="text-fuchsia-300">MP</b> gauge by grabbing glowing violet MP crystals and skimming asteroids. MP stacks up to three stored charges and, like your hearts, carries into every new level. With a charge ready tap <b class="text-fuchsia-300">✦ HYPER-NOVA</b> (or press E) — or just release a max overcharge — to unleash a full-screen sonic burst that smashes asteroids, vacuums every Light Pulse and makes you briefly invulnerable. Unlock Nova, the Solar Ace, in the Shop Matrix.
                     </div>
                 </div>
             </div>
@@ -450,7 +503,7 @@
             <!-- World leaderboard submission -->
             <div id="submitScoreBox" class="w-full mb-4">
                 <div class="flex space-x-2">
-                    <input id="playerNameInput" type="text" maxlength="16" placeholder="ENTER CALLSIGN" autocomplete="off"
+                    <input id="playerNameInput" type="text" maxlength="20" placeholder="ENTER CALLSIGN" autocomplete="off"
                         class="flex-1 min-w-0 bg-slate-900/80 border border-cyan-500/30 focus:border-cyan-400 outline-none rounded-xl px-4 py-3 font-orbitron text-sm font-bold text-white placeholder-slate-500 uppercase">
                     <button id="submitScoreBtn" class="px-4 py-3 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-orbitron text-xs font-black transition whitespace-nowrap">
                         🌍 SUBMIT
@@ -829,9 +882,9 @@
         // a signature wake around the orb and their own voice pitch for callouts
         const PILOTS = [
             { id: 'lyra', name: 'LYRA', title: 'ASTRA SCOUT', cost: 0, color: '#c084fc', glow: '#00f0ff', rgb: ['176,38,255', '0,240,255'], voice: 1.15, focus: 0.55,
-              portrait: 'assets/pilots/lyra-portrait.webp', cutin: 'assets/pilots/lyra-cutin.webp', desc: 'Purple-cyan wake • star-dust bursts on every slingshot' },
+              portrait: 'assets/pilots/lyra-portrait.png', cutin: 'assets/pilots/lyra-fullbody.png', desc: 'Purple-cyan wake • star-dust bursts on every slingshot' },
             { id: 'nova', name: 'NOVA', title: 'SOLAR ACE', cost: 300, color: '#ffaa00', glow: '#ffd23f', rgb: ['255,120,0', '255,214,64'], voice: 0.95, focus: 0.5,
-              portrait: 'assets/pilots/nova-portrait.webp', cutin: 'assets/pilots/nova-cutin.webp', desc: 'Blazing solar flare wake • flare blasts on close skims' }
+              portrait: 'assets/pilots/nova-portrait.svg', cutin: 'assets/pilots/nova-cutin.svg', desc: 'Blazing solar flare wake • flare blasts on close skims' }
         ];
         const pilotArt = {};
         PILOTS.forEach(p => {
@@ -874,7 +927,8 @@
 
         // Levels, lives & power-ups
         const LEVEL_HEIGHT = 2500;   // world pixels climbed per level
-        const MAX_LIVES = 5;
+        const MAX_LIVES = 9;          // hearts stack up and carry into every new level
+        const HEART_SLOTS = 5;        // hearts drawn individually before switching to a count
         const DOUBLE_DURATION = 480; // frames (~8s)
         let level = 1;
         let lives = 1;
@@ -903,7 +957,8 @@
         const rhythm = { phase: 0, beat: 0, energy: 0.1, breath: 0, time: 0, count: 0 };
 
         // Pilot MP gauge & Manga Cut-In special (Hyper-Nova)
-        const MP_MAX = 100;
+        const MP_MAX = 100;            // MP per Hyper-Nova charge
+        const MP_BANK = 300;           // MP stacks up to 3 stored charges and carries across levels
         const MP_PER_SKIM = 10;
         const MP_PER_GEM = 25;
         const CUTIN_FRAMES = 72;       // ~1.2s cut-in; the blast fires when the text switches
@@ -1139,6 +1194,7 @@
                         if (step > this.chargeStep) {
                             this.chargeStep = step;
                             if (this.charge >= CHARGE_MIN) sfx.playChargeTick(step);
+                            if (step === 4) cheerLyra('ENERGY FULL', 'All warmed up, hotshot. Let me see you fly!', 3, 'energy-full');
                         }
                     }
                 } else {
@@ -2180,9 +2236,13 @@
                 }
 
                 // MP crystals float a little off the node's line
-                if (Math.random() < 0.12) {
-                    const gx = Math.max(40, Math.min(width - 40, nx + (Math.random() < 0.5 ? -1 : 1) * (90 + Math.random() * 60)));
-                    if (!nearGate(gx, midY, 160)) mpGems.push(new MpGem(gx, midY + (Math.random() - 0.5) * 60));
+                if (Math.random() < 0.32) {
+                    const side = Math.random() < 0.5 ? -1 : 1;
+                    const count = Math.random() < 0.3 ? 2 : 1;
+                    for (let i = 0; i < count; i++) {
+                        const gx = Math.max(40, Math.min(width - 40, nx + side * (90 + i * 55 + Math.random() * 40)));
+                        if (!nearGate(gx, midY, 160)) mpGems.push(new MpGem(gx, midY + (Math.random() - 0.5) * 60 - i * 40));
+                    }
                 }
 
                 // Rare power-ups, placed beside the node so they can be swung into
@@ -2379,19 +2439,70 @@
             setTimeout(() => img.classList.remove(cls), ms);
         }
 
+        // All poses and expressions come from the supplied Lyra character sheet.
+        const LYRA_POSES = ['assets/pilots/lyra-fullbody.png', 'assets/pilots/lyra-side.png', 'assets/pilots/lyra-back.png'];
+        // Cinematic comic-panel artwork supplied by the game creator.
+        const LYRA_CINEMATICS = Array.from({length: 6}, (_, i) => {
+            const image = new Image();
+            image.src = `assets/pilots/lyra-cinematic-${i + 1}.webp`;
+            return image;
+        });
+        const LYRA_EXPRESSIONS = ['assets/pilots/lyra-smile.png', 'assets/pilots/lyra-wink.png', 'assets/pilots/lyra-kiss.png'];
+        const lyraPoseImages = LYRA_POSES.map(src => { const image = new Image(); image.src = src; return image; });
+        LYRA_EXPRESSIONS.forEach(src => { const image = new Image(); image.src = src; });
+        let lyraPoseIndex = 0;
+        let cheerUntil = 0, cheerPriority = 0;
+        const cheerCooldowns = {};
+        function cheerLyra(tag, line, priority = 1, key = tag) {
+            if (gameState !== 'PLAYING' || sectorSceneUntil || cutin) return;
+            if (frameCount < (cheerCooldowns[key] || 0)) return;
+            if (frameCount < cheerUntil && priority < cheerPriority) return;
+            cheerCooldowns[key] = frameCount + (key === 'energy-full' ? 360 : priority === 0 ? 240 : 90);
+            cheerPriority = priority;
+            cheerUntil = frameCount + 150;
+            document.getElementById('cheerTag').textContent = tag;
+            document.getElementById('cheerLine').textContent = line;
+            const el = document.getElementById('pilotCheer');
+            const pose = lyraPoseIndex++ % LYRA_POSES.length;
+            el.dataset.mood = priority >= 3 ? 'charged' : 'playful';
+            el.querySelector(':scope > img').src = LYRA_POSES[pose];
+            el.querySelector('.lyra-expression').src = LYRA_EXPRESSIONS[pose];
+            el.classList.remove('cheering');
+            void el.offsetWidth;
+            el.classList.add('cheering');
+            el.setAttribute('aria-hidden', 'false');
+        }
+        function clearCheer() {
+            cheerUntil = 0;
+            document.getElementById('pilotCheer').classList.remove('cheering');
+            document.getElementById('pilotCheer').setAttribute('aria-hidden', 'true');
+        }
+
         function addMp(amount) {
-            if (gameState !== 'PLAYING' || cutin || mp >= MP_MAX) return;
-            mp = Math.min(MP_MAX, mp + amount);
-            if (mp >= MP_MAX) {
+            if (gameState !== 'PLAYING' || mp >= MP_BANK) return false;
+            const before = Math.floor(mp / MP_MAX);
+            mp = Math.min(MP_BANK, mp + amount);
+            const charges = Math.floor(mp / MP_MAX);
+            if (charges > before) {
                 sfx.playMpReady();
-                showBanner('MP READY!', 'TAP ✦ HYPER-NOVA • PRESS E • OR RELEASE A MAX OVERCHARGE', 'text-fuchsia-300 neon-text-pink', 'MP ready — say the word!');
+                if (charges >= MP_BANK / MP_MAX) {
+                    cheerLyra('MP MAX!', 'Fully stacked, darling! Let’s make a supernova.', 3);
+                    showBanner('MP MAX ×' + charges, 'ALL CHARGES STORED • TAP ✦ HYPER-NOVA • PRESS E', 'text-fuchsia-300 neon-text-pink', 'Fully stacked — say the word!');
+                } else if (cutin) {
+                    cheerLyra('MP ×' + charges, 'Another charge stored for later!', 2);
+                } else {
+                    cheerLyra(charges > 1 ? 'MP ×' + charges : 'MP READY!', charges > 1 ? 'Stacking it up — save it or blow it!' : 'All charged up! Let’s make a supernova.', 3);
+                    showBanner(charges > 1 ? 'MP ×' + charges + ' STORED' : 'MP READY!', 'TAP ✦ HYPER-NOVA • PRESS E • OR RELEASE A MAX OVERCHARGE', 'text-fuchsia-300 neon-text-pink', charges > 1 ? 'Charges stacking up!' : 'MP ready — say the word!');
+                }
+                return true;
             }
+            return false;
         }
 
         function activateHyperNova() {
-            if (gameState !== 'PLAYING' || cutin || mp < MP_MAX) return;
-            mp = 0;
-            cutin = { t: 0, pilot: getActivePilot() };
+            if (gameState !== 'PLAYING' || sectorSceneUntil || cutin || mp < MP_MAX) return;
+            mp -= MP_MAX;
+            cutin = { t: 0, pilot: getActivePilot(), pose: lyraPoseIndex++ % LYRA_CINEMATICS.length };
             // Invulnerable from the first frame of the cut-in until well after the blast
             burstTimer = Math.max(burstTimer, 210);
             burstFull = true;
@@ -2479,7 +2590,9 @@
         // Full-screen horizontal manga cut-in panel
         function renderCutIn() {
             if (!cutin) return;
-            const t = cutin.t, p = cutin.pilot, img = pilotArt[p.id].cutin;
+            const t = cutin.t, p = cutin.pilot;
+            const poseImage = p.id === 'lyra' ? lyraPoseImages[cutin.pose] : null;
+            const img = poseImage?.complete && poseImage.naturalWidth ? poseImage : pilotArt[p.id].cutin;
             const ease = k => 1 - Math.pow(1 - k, 3);
             const inK = ease(Math.min(1, t / 10));
             const outK = t > CUTIN_FRAMES - 12 ? ease((t - (CUTIN_FRAMES - 12)) / 12) : 0;
@@ -2533,23 +2646,41 @@
             ctx.fillStyle = bg;
             ctx.fillRect(-W / 2, -bandH / 2, W, bandH);
 
-            // Pilot art: cover the visible band, slow push-in for drama
-            // Pilot art fits the band height (slow push-in for drama); on wide screens its edges
-            // melt into the panel gradient
-            if (img.complete && img.naturalWidth) {
-                const scale = bandH / img.naturalHeight * (1.06 + t * 0.0012);
-                const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
-                const dx = -dw * p.focus - (t / CUTIN_FRAMES - 0.5) * 24;
-                ctx.drawImage(img, dx, -dh / 2, dw, dh);
-                if (dw < width * 1.05) {
-                    const fade = Math.min(120, dw * 0.15);
-                    [[dx, dx + fade, p.rgb[0]], [dx + dw, dx + dw - fade, p.rgb[1]]].forEach(([x0, x1, rgb]) => {
-                        const g = ctx.createLinearGradient(x0, 0, x1, 0);
-                        g.addColorStop(0, `rgba(${rgb}, 1)`);
-                        g.addColorStop(1, `rgba(${rgb}, 0)`);
-                        ctx.fillStyle = g;
-                        ctx.fillRect(Math.min(x0, x1) - 1, -dh / 2, fade + 2, dh);
-                    });
+            // Animated cinematic cut-ins: each Hyper-Nova cycles to another illustration.
+            // Camera keyframes, parallax, breathing sway and impact shake bring the stills to life.
+            const cinematic = p.id === 'lyra' ? LYRA_CINEMATICS[cutin.pose % LYRA_CINEMATICS.length] : null;
+            const art = cinematic?.complete && cinematic.naturalWidth ? cinematic : img;
+            if (art.complete && art.naturalWidth) {
+                if (art === cinematic) {
+                    const progress = Math.min(1, t / CUTIN_FRAMES);
+                    const phase = cutin.pose % LYRA_CINEMATICS.length;
+                    const coverScale = Math.max(W / art.naturalWidth, bandH / art.naturalHeight);
+                    const zoom = 1.04 + 0.17 * progress + 0.018 * Math.sin(t * 0.12);
+                    const dw = art.naturalWidth * coverScale * zoom;
+                    const dh = art.naturalHeight * coverScale * zoom;
+                    const panX = Math.sin(progress * Math.PI * 0.9 + phase * 1.2) * Math.min(70, dw * 0.08);
+                    const panY = Math.cos(progress * Math.PI + phase) * Math.min(22, dh * 0.07);
+                    const shake = t >= CUTIN_BLAST_FRAME && t < CUTIN_BLAST_FRAME + 9
+                        ? (1 - (t - CUTIN_BLAST_FRAME) / 9) * 10 : 0;
+                    const offsetX = Math.sin(t * 1.9) * shake;
+                    const offsetY = Math.cos(t * 2.5) * shake;
+                    ctx.save();
+                    ctx.translate(panX + offsetX, panY + offsetY);
+                    ctx.rotate(Math.sin(t * 0.075 + phase) * 0.013);
+                    ctx.drawImage(art, -dw / 2, -dh / 2, dw, dh);
+                    ctx.restore();
+                    // Passing highlight creates an extra layer of movement across the art.
+                    const sheenX = -W / 2 + ((t * 15 + phase * 45) % (W + 240));
+                    const sheen = ctx.createLinearGradient(sheenX - 90, 0, sheenX + 90, 0);
+                    sheen.addColorStop(0, 'rgba(255,255,255,0)');
+                    sheen.addColorStop(0.5, 'rgba(255,155,255,0.13)');
+                    sheen.addColorStop(1, 'rgba(255,255,255,0)');
+                    ctx.fillStyle = sheen;
+                    ctx.fillRect(sheenX - 90, -bandH / 2, 180, bandH);
+                } else {
+                    const scale = bandH / art.naturalHeight * (1.06 + t * 0.0012);
+                    const dw = art.naturalWidth * scale, dh = art.naturalHeight * scale;
+                    ctx.drawImage(art, -dw * p.focus, -dh / 2, dw, dh);
                 }
             }
 
@@ -2642,7 +2773,54 @@
         // --- INPUT CONTROLLER ---
         let isHolding = false;
 
+        let sectorSceneUntil = 0;
+        let sectorPreviousFocus = null;
+        let sectorPoseStage = -1;
+        function updateSectorPose(stage) {
+            if (stage === sectorPoseStage) return;
+            sectorPoseStage = stage;
+            const pose = (level - 2 + stage) % LYRA_POSES.length;
+            const art = document.getElementById('sectorArt');
+            art.src = LYRA_POSES[pose];
+            art.alt = ['Lyra in a confident full-body stance', 'Lyra in a relaxed three-quarter stance', 'Lyra showing her magenta-trimmed pilot jacket'][pose];
+            document.getElementById('sectorExpression').src = LYRA_EXPRESSIONS[pose];
+            art.classList.remove('pose-reveal');
+            void art.offsetWidth;
+            art.classList.add('pose-reveal');
+        }
+        const sectorScene = document.getElementById('sectorScene');
+        function finishSectorScene() {
+            sectorSceneUntil = 0;
+            sectorScene.hidden = true;
+            isHolding = false;
+            Object.keys(mgKeys).forEach(key => mgKeys[key] = false);
+            if (sectorPreviousFocus) sectorPreviousFocus.focus({ preventScroll: true });
+        }
+        function showSectorScene(lv) {
+            clearCheer();
+            isHolding = false;
+            sectorPreviousFocus = document.activeElement;
+            document.getElementById('sectorTitle').textContent = `SECTOR ${String(lv).padStart(2, '0')}`;
+            const lines = ['Gravity wall cleared, hotshot. Follow my signal — we have stars to chase.', 'A new orbit. A stronger echo. Stay close to me.', 'The void gets louder from here. Let’s light it up together.'];
+            document.getElementById('sectorLine').textContent = lines[(lv - 2) % lines.length];
+            const charges = Math.floor(mp / MP_MAX);
+            document.getElementById('sectorCarry').textContent = `CARRIED OVER: ${lives} ♥ • MP ${charges ? '×' + charges + ' + ' : ''}${Math.floor(mp % MP_MAX)}%`;
+            sectorScene.hidden = false;
+            sectorPoseStage = -1;
+            updateSectorPose(0);
+            sectorSceneUntil = performance.now() + 4200;
+            document.getElementById('sectorSkip').focus({ preventScroll: true });
+        }
+        document.getElementById('sectorSkip').addEventListener('click', finishSectorScene);
+        window.addEventListener('keydown', e => {
+            if (!sectorSceneUntil) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            if (['Escape', 'Enter', 'Space'].includes(e.code)) finishSectorScene();
+        }, true);
+
         function onInputDown(e) {
+            if (sectorSceneUntil) return;
             if (gameState !== 'PLAYING') return;
             sfx.init();
             isHolding = true;
@@ -2665,6 +2843,7 @@
         // on menu/shop buttons still fire their click events on phones. Listening on window
         // means a touch anywhere on screen anchors the orb, even over the HUD.
         window.addEventListener('touchstart', (e) => {
+            if (sectorSceneUntil) return;
             if (gameState === 'PLAYING' || gameState === 'MINIGAME') e.preventDefault();
             if (gameState === 'MINIGAME' && e.touches.length) minigamePointerDown(e.touches[0].clientX, e.touches[0].clientY, true);
             onInputDown(e);
@@ -2675,6 +2854,7 @@
             if (e.touches.length) minigamePointerMove(e.touches[0].clientX, e.touches[0].clientY, true);
         }, { passive: false });
         const onTouchRelease = (e) => {
+            if (sectorSceneUntil) return;
             if (gameState === 'PLAYING' || gameState === 'MINIGAME') e.preventDefault();
             if (e.touches.length === 0) onInputUp(e);
         };
@@ -2711,6 +2891,10 @@
         // --- GAME LOOP & STATE MANAGEMENT ---
 
         function startGame() {
+            runId = crypto.randomUUID();
+            clearCheer();
+            Object.keys(cheerCooldowns).forEach(key => delete cheerCooldowns[key]);
+            finishSectorScene();
             sfx.init();
             gameState = 'PLAYING';
             score = 0;
@@ -2781,7 +2965,7 @@
         function updateHud() {
             document.getElementById('hudLevel').innerText = `LV ${level}`;
             document.getElementById('hudMult').innerText = `x${pointsMult()} PTS`;
-            document.getElementById('hudLives').innerText = '♥'.repeat(lives) + '♡'.repeat(Math.max(0, MAX_LIVES - lives));
+            document.getElementById('hudLives').innerText = lives > HEART_SLOTS ? `♥×${lives}` : '♥'.repeat(lives) + '♡'.repeat(Math.max(0, HEART_SLOTS - lives));
         }
 
         let bannerTimeout = null;
@@ -3875,8 +4059,9 @@
             const energy = burstTimer > 0 ? 1 : player.anchoredNode ? player.charge : 0;
             pilotHud.energyBar.style.width = `${energy * 100}%`;
             pilotHud.energyTxt.innerText = cutin ? 'NOVA' : burstTimer > 0 ? 'BURST' : player.charge >= 1 ? 'MAX' : player.charge >= CHARGE_MIN ? 'READY' : '';
-            pilotHud.mpBar.style.width = `${mp}%`;
-            pilotHud.mpTxt.innerText = mp >= MP_MAX ? 'READY!' : `${Math.floor(mp)}%`;
+            const charges = Math.floor(mp / MP_MAX);
+            pilotHud.mpBar.style.width = `${mp >= MP_BANK ? 100 : mp % MP_MAX}%`;
+            pilotHud.mpTxt.innerText = charges ? `×${charges} ${mp >= MP_BANK ? 'MAX' : Math.floor(mp % MP_MAX) + '%'}` : `${Math.floor(mp)}%`;
             const ready = mp >= MP_MAX && !cutin && gameState === 'PLAYING';
             pilotHud.mpBar.classList.toggle('mp-full', ready);
             pilotHud.pilotImg.classList.toggle('pilot-ready', ready);
@@ -3884,12 +4069,20 @@
         }
 
         function gameLoop(now) {
+            if (sectorSceneUntil) {
+                updateSectorPose(now >= sectorSceneUntil - 2100 ? 1 : 0);
+                if (now >= sectorSceneUntil) finishSectorScene();
+                lastTime = now;
+                requestAnimationFrame(gameLoop);
+                return;
+            }
             if (now - lastTime < FRAME_MS - 1) {
                 requestAnimationFrame(gameLoop);
                 return;
             }
             lastTime = now;
             frameCount++;
+            if (cheerUntil && (frameCount >= cheerUntil || gameState !== 'PLAYING')) clearCheer();
             updateRhythm();
             if (glitchTimer > 0) glitchTimer--;
 
@@ -3930,6 +4123,7 @@
                         createGate(level);
                         sfx.playLevelUp();
                         showBanner(`LEVEL ${level}`, gateBonus ? `PLANET BONUS +${gateBonus} • x${level} POINTS` : `FASTER • MORE ASTEROIDS • x${level} POINTS`, 'text-white neon-text-cyan', `Sector ${level}. Stay sharp!`);
+                        showSectorScene(level);
                         gateBonus = 0;
                         spawnExplosion(player.x, player.y, '#aa00ff', 30);
                         if (!runStats.lifeLost) missionStat('cleanLevel', level, true);
@@ -4127,6 +4321,7 @@
                             runGems += 1 * combo;
                             score += 10 * pointsMult();
                             sfx.playGem();
+                            cheerLyra('LIGHT PULSE!', combo > 1 ? `x${combo} gems! Beautiful flying!` : 'Another star for us. Keep going!', 0, 'gems');
                             spawnExplosion(p.x, p.y, '#ffea00', 12);
                             missionStat('pulses', runGems, true);
                         }
@@ -4141,8 +4336,9 @@
                         sfx.playMpReady();
                         spawnExplosion(g.x, g.y, '#ff4dff', 16);
                         floaters.push(new Floater(g.x, g.y - 18, `+${MP_PER_GEM} MP`, '#ff7dff'));
-                        addMp(MP_PER_GEM);
-                        if (mp < MP_MAX) pilotSay(['MP crystal secured!', 'Charging up!', 'More power!'][Math.floor(Math.random() * 3)], { key: 'mpgem', cooldown: 240, priority: 0 });
+                        const newCharge = addMp(MP_PER_GEM);
+                        if (!newCharge) cheerLyra('MP CRYSTAL!', 'Mmm, feel that energy? We’re charging up!', 1, 'mp');
+                        if (!newCharge) pilotSay(['MP crystal secured!', 'Charging up!', 'More power!'][Math.floor(Math.random() * 3)], { key: 'mpgem', cooldown: 240, priority: 0 });
                     }
                 });
 
@@ -4158,11 +4354,13 @@
                             spawnExplosion(pu.x, pu.y, pu.color, 30);
                             if (pu.type === 'double') {
                                 doubleTimer = DOUBLE_DURATION;
+                                cheerLyra('2X POINTS!', 'Double the score. Show them what you’ve got!', 2);
                                 document.getElementById('hudDouble').classList.remove('hidden');
                                 showBanner('2X POINTS!', 'DOUBLE SCORE FOR 8 SECONDS', 'text-yellow-300 neon-text-pink', 'Double points — make it count!');
                             } else if (lives < MAX_LIVES) {
                                 lives++;
-                                showBanner('+1 LIFE', `${lives} ♥`, 'text-pink-400 neon-text-pink', 'Shields restored!');
+                                cheerLyra('SHIELDS UP!', 'Back in the fight. I’ve got you!', 2);
+                                showBanner('+1 LIFE', `${lives} ♥ • STACKS INTO THE NEXT LEVEL`, 'text-pink-400 neon-text-pink', 'Shields restored!');
                             } else {
                                 score += 250 * level;
                                 showBanner('LIVES FULL', `+${250 * level} BONUS POINTS`, 'text-pink-400 neon-text-pink', 'Shields maxed — bonus banked!');
@@ -4537,28 +4735,12 @@
         // Scores live on the Netlify backend. When the page is served from Netlify the
         // relative path works; anywhere else (GitHub Pages, a local file...) fall back to
         // the Netlify site directly.
-        const LEADERBOARD_ENDPOINTS = ['/api/leaderboard', 'https://resplendent-blancmange-2a8773.netlify.app/api/leaderboard'];
-        let leaderboardEndpoint = null;
-
-        async function leaderboardFetch(options) {
-            const candidates = leaderboardEndpoint ? [leaderboardEndpoint] : LEADERBOARD_ENDPOINTS;
-            let lastErr;
-            for (const url of candidates) {
-                if (url.startsWith('/') && location.protocol === 'file:') continue;
-                try {
-                    const res = await fetch(url, options);
-                    // A static host answers with HTML (404/405) instead of our JSON API
-                    if (!(res.headers.get('content-type') || '').includes('application/json')) {
-                        throw new Error('Leaderboard API not found at ' + url);
-                    }
-                    leaderboardEndpoint = url;
-                    return res;
-                } catch (err) {
-                    lastErr = err;
-                }
-            }
-            throw lastErr || new Error('Leaderboard unreachable');
+        async function leaderboardFetch(options = {}) {
+            const response = await fetch('/api/leaderboard', { ...options, signal: AbortSignal.timeout(12000) });
+            if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Leaderboard unavailable');
+            return response;
         }
+        let runId = null;
 
         let lastSubmittedId = null;
         let submittedScore = 0;
@@ -4624,9 +4806,10 @@
             const input = document.getElementById('playerNameInput');
             const btn = document.getElementById('submitScoreBtn');
             const msg = document.getElementById('submitScoreMsg');
+            if (btn.disabled) return;
             const name = input.value.trim();
-            if (!name) {
-                msg.innerText = 'Enter a callsign first';
+            if (!name || name.length > 20) {
+                msg.innerText = 'Enter a callsign of 1–20 characters';
                 input.focus();
                 return;
             }
@@ -4638,7 +4821,7 @@
                 const res = await leaderboardFetch({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, score: finalScore, level })
+                    body: JSON.stringify({ name, score: finalScore, level, runId })
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Submit failed');
@@ -4653,7 +4836,7 @@
                 btn.disabled = false;
                 input.disabled = false;
                 btn.innerText = '🌍 SUBMIT';
-                msg.innerText = 'Could not reach the leaderboard. Try again.';
+                msg.innerText = err.message === 'Leaderboard unavailable' ? 'Leaderboard unavailable. Please try again.' : 'Could not submit this run. Check your callsign and try again.';
             }
         }
 
