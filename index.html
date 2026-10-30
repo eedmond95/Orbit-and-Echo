@@ -5156,12 +5156,12 @@ window.addEventListener('DOMContentLoaded',()=>{
         });
 
         // --- WORLD LEADERBOARD ---
-        // GitHub Pages serves static files only. Scores stay on the existing Netlify API.
-        // Keep this public URL in sync if the Netlify site is renamed (it is not a secret).
-        const LEADERBOARD_API = 'https://resplendent-blancmange-2a8773.netlify.app/api/leaderboard';
+        // Set the public HTTPS API URL after deploying the backend to Netlify.
+        // GitHub Pages has no backend of its own. Never put API keys here.
+        const LEADERBOARD_API = '';
         const leaderboardCandidates = location.hostname.endsWith('.github.io') || location.protocol === 'file:'
-            ? [LEADERBOARD_API]
-            : [...new Set([new URL('/api/leaderboard', location.href).href, LEADERBOARD_API])];
+            ? [LEADERBOARD_API].filter(Boolean)
+            : [...new Set([new URL('/api/leaderboard', location.href).href, LEADERBOARD_API].filter(Boolean))];
         let leaderboardEndpoint = null;
         let leaderboardDiscovery = null;
 
@@ -5177,6 +5177,7 @@ window.addEventListener('DOMContentLoaded',()=>{
         }
 
         async function leaderboardFetch(options = {}) {
+            if (!leaderboardCandidates.length) throw new Error('Leaderboard not connected');
             const method = (options.method || 'GET').toUpperCase();
             if (method === 'GET') {
                 const candidates = leaderboardEndpoint
@@ -5243,7 +5244,10 @@ window.addEventListener('DOMContentLoaded',()=>{
                 if (!res.ok) throw new Error();
                 renderLeaderboard(await res.json());
             } catch (err) {
-                list.innerHTML = `<div class="text-center text-pink-400 font-orbitron text-sm py-10">SIGNAL LOST — COULD NOT LOAD LEADERBOARD</div>`;
+                const message = err.message === 'Leaderboard not connected'
+                    ? 'ONLINE LEADERBOARD NOT AVAILABLE YET'
+                    : 'SIGNAL LOST — COULD NOT LOAD LEADERBOARD';
+                list.innerHTML = `<div class="text-center text-pink-400 font-orbitron text-sm py-10">${message}</div>`;
             }
         }
 
@@ -5299,7 +5303,7 @@ window.addEventListener('DOMContentLoaded',()=>{
                 btn.disabled = false;
                 input.disabled = false;
                 btn.innerText = '🌍 SUBMIT';
-                msg.innerText = err.message === 'Leaderboard unavailable' ? 'Leaderboard unavailable. Please try again.' : 'Could not submit this run. Check your callsign and try again.';
+                msg.innerText = err.message === 'Leaderboard not connected' ? 'Online score sharing is not available yet.' : err.message === 'Leaderboard unavailable' ? 'Leaderboard unavailable. Please try again.' : 'Could not submit this run. Check your callsign and try again.';
             }
         }
 

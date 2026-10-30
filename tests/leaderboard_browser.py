@@ -6,13 +6,13 @@ from playwright.sync_api import sync_playwright
 
 html = (Path(__file__).resolve().parents[1] / 'index.html').read_text()
 pages_url = 'https://eedmond95.github.io/Orbit-and-Echo/'
-api_url = 'https://resplendent-blancmange-2a8773.netlify.app/api/leaderboard'
+api_url = 'https://orbit-echo-test.netlify.app/api/leaderboard'
 entries = [{'id': 1, 'name': 'Existing Pilot', 'score': 1000, 'level': 1}]
 
 with sync_playwright() as p:
     browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox'])
 
-    def scenario(origin, *, submit_first=False, fail_post=False):
+    def scenario(origin, *, submit_first=False, fail_post=False, configured=True):
         context = browser.new_context()
         calls = []
         errors = []
@@ -20,7 +20,8 @@ with sync_playwright() as p:
         def route_request(route):
             req = route.request
             if req.url == origin:
-                return route.fulfill(status=200, content_type='text/html', body=html)
+                content = html.replace("const LEADERBOARD_API = '';", f"const LEADERBOARD_API = '{api_url}';") if configured else html
+                return route.fulfill(status=200, content_type='text/html', body=content)
             if req.url == api_url:
                 calls.append((req.method, req.url))
                 headers = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
@@ -46,6 +47,13 @@ with sync_playwright() as p:
         page = context.new_page()
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(origin, wait_until='networkidle')
+        if not configured:
+            page.locator('#openLeaderboardBtn').click()
+            page.locator('#leaderboardList').get_by_text('ONLINE LEADERBOARD NOT AVAILABLE YET', exact=True).wait_for()
+            assert not calls, calls
+            assert not errors, errors
+            context.close()
+            return
         if not submit_first:
             page.locator('#openLeaderboardBtn').click()
             page.locator('#leaderboardList').get_by_text('Existing Pilot', exact=True).wait_for()
@@ -77,4 +85,6 @@ with sync_playwright() as p:
     print('PASS custom static host: GET discovers API; POST never targets the static host')
     scenario(pages_url, fail_post=True)
     print('PASS lost submission response: one POST only, retry UI restored, no automatic duplicates')
+    scenario(pages_url, configured=False)
+    print('PASS unconfigured GitHub Pages: honest unavailable state, no requests to a defunct backend')
     browser.close()

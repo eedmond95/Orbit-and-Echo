@@ -32,7 +32,12 @@ export function createLeaderboardHandler(store, logger = console) {
       if (!Number.isSafeInteger(body.level) || body.level < 1 || body.level > 999) {
         return json({ error: 'Invalid level' }, 400);
       }
-      const entry = await store.insertScore({ name, score: body.score, level: body.level });
+      const runId = body.runId;
+      if (runId !== undefined && (typeof runId !== 'string'
+          || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(runId))) {
+        return json({ error: 'Invalid run identifier' }, 400);
+      }
+      const entry = await store.insertScore({ name, score: body.score, level: body.level, runId });
       return json({ id: entry.id, top: await store.topScores() }, 201);
     } catch (_) {
       // Avoid exposing database connection details in responses or logs.
